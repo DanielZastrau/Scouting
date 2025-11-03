@@ -7,23 +7,26 @@ def main(filename: str):
     with open(os.path.join(os.getcwd(), filename), 'r', encoding='utf-8') as file:
         data = file.read()
 
+    # filter out irrelevant lines
     data = data.split('\n')
-    tmp = []
+    data = [line for line in data if (not line.startswith('#')) and (len(line) != 0)]
+
+    # read out serve positions
+    serve_positions = {}
     for line in data:
-        if line.startswith('#') or len(line) == 0:
-            continue
-        tmp.append(line)
-    data = tmp
+        if line.startswith('>'):
+            positions = line.split('  ')[1:]
+
+            for position in positions:
+                number, pos = position.split(' ')
+
+                serve_positions[number] = int(pos)
+
+    # remove serve pos line
+    data = [line for line in data if not line.startswith('>')]
 
     # each line is a set in the game
-    positions = {
-            1: 0,
-            2: 0,
-            3: 0,
-            4: 0,
-            5: 0,
-            6: 0,
-        }
+    positions = {i:0 for i in range(1, 7)}
     K1 = {i: positions.copy() for i in range(1, 4)}
     K2 = {i: positions.copy() for i in range(1, 4)}
     serves = {}
@@ -97,7 +100,7 @@ def main(filename: str):
         print('amount_of_serves', amount_of_serves, sep='---')
         print('-'*100)
 
-    dicts_to_write = [K1, K2, serves, serve_outcomes]
+    dicts_to_write = [K1, K2, serves, serve_outcomes, serve_positions]
     with open(os.path.join(os.getcwd(), f'analysis_{filename}'), 'w', encoding='utf-8') as file:
         for d in dicts_to_write:
             json_string = json.dumps(d)

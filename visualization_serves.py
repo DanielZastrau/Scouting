@@ -11,8 +11,9 @@ CountDict1 = Dict[int, int]
 CountDict2 = Dict[int, int]
 OuterDict1 = Dict[int, CountDict1]
 OuterDict2 = Dict[int, CountDict2]
+OuterDict3 = Dict[int, int]
 
-def draw_stacked_squares(dict1: OuterDict1, dict2: OuterDict2, output_filename: str = 'stacked_squares.png'):
+def draw_stacked_squares(dict1: OuterDict1, dict2: OuterDict2, serve_positions: OuterDict3, output_filename: str = 'stacked_squares.png'):
     """
     Draws a visualization based on two dictionaries.
 
@@ -68,14 +69,14 @@ def draw_stacked_squares(dict1: OuterDict1, dict2: OuterDict2, output_filename: 
     
     top_row_y_center = 2.5 # Y-center for the first row
 
-    # --- 3. Iterate and Draw per Key ---
-    for i, key in enumerate(sorted_keys):
-        if key not in dict2:
-            print(f"Warning: Key {key} from dict1 not found in dict2. Skipping.")
+    # --- 3. Iterate and Draw per number_of_player ---
+    for i, number_of_player in enumerate(sorted_keys):
+        if number_of_player not in dict2:
+            print(f"Warning: Key {number_of_player} from dict1 not found in dict2. Skipping.")
             continue
             
-        inner_dict1 = dict1[key]
-        inner_dict2 = dict2[key]
+        inner_dict1 = dict1[number_of_player]
+        inner_dict2 = dict2[number_of_player]
         
         # --- Calculate grid position ---
         col_index = i % num_cols
@@ -87,7 +88,7 @@ def draw_stacked_squares(dict1: OuterDict1, dict2: OuterDict2, output_filename: 
         y_base_center = top_row_y_center - (row_index * row_height)
         
         # --- Draw Key Label ---
-        ax.text(x_base - 0.6, y_base_center + 0.5, f"#{key}", ha='right', va='center', fontsize=14, fontweight='bold')
+        ax.text(x_base - 0.6, y_base_center + 0.5, f"#{number_of_player}", ha='right', va='center', fontsize=14, fontweight='bold')
 
         # --- Draw Squares (Top and Bottom) ---
         # Top square
@@ -126,46 +127,86 @@ def draw_stacked_squares(dict1: OuterDict1, dict2: OuterDict2, output_filename: 
         # --- Draw Lines and Bottom Labels (from dict1) ---
         
         # Line Origin: Center of top border of top square
-        line_origin = (x_base, y_base_center + 1.0)
-        
-        # Destination positions inside BOTTOM square
+        line_origins = [
+            (x_base - square_size / 2, y_base_center + 1.0),
+            (x_base - square_size / 4, y_base_center + 1.0),
+            (x_base                  , y_base_center + 1.0),
+            (x_base + square_size / 4, y_base_center + 1.0),
+            (x_base + square_size / 2, y_base_center + 1.0),
+        ]
+
         # Bottom square boundaries: x=[x_base-0.5, x_base+0.5], y=[y_base_center-1.0, y_base_center]
-        dest_left = bottom_sq_bl_x + padding
-        dest_right = bottom_sq_bl_x + square_size - padding
-        dest_center_x = x_base
+        # Destination positions inside BOTTOM square
+        dest_left = bottom_sq_bl_x
+        dest_segm_one = dest_left + 1 * square_size / 7
+        dest_segm_two = dest_left + 2 * square_size / 7
+        dest_segm_thr = dest_left + 3 * square_size / 7
+        dest_segm_fou = dest_left + 4 * square_size / 7
+        dest_segm_fiv = dest_left + 5 * square_size / 7
+        dest_segm_six = dest_left + 6 * square_size / 7
+        dest_right = bottom_sq_bl_x + square_size
         
-        dest_top = bottom_sq_bl_y + square_size - padding
-        dest_bottom = bottom_sq_bl_y + padding
+        dest_bottom = bottom_sq_bl_y
         
-        # Map keys 1-6 to new positions
         dest_positions = {
-            1: (dest_right, dest_bottom), # Bottom Right
-            2: (dest_right, dest_top),    # Top Right
-            3: (dest_center_x, dest_top), # Top Center
-            4: (dest_left, dest_top),     # Top Left
-            5: (dest_left, dest_bottom),  # Bottom Left
-            6: (dest_center_x, dest_bottom) # Bottom Center
+            1: (dest_left, dest_bottom),
+            2: (dest_segm_one, dest_bottom),
+            3: (dest_segm_two, dest_bottom),
+            4: (dest_segm_thr, dest_bottom),
+            5: (dest_segm_fou, dest_bottom),
+            6: (dest_segm_fiv, dest_bottom),
+            7: (dest_segm_six, dest_bottom),
+            8: (dest_right, dest_bottom),
+        }
+
+        # Count positions outside of bottom square
+
+        x_one = bottom_sq_bl_x - padding
+        x_two = x_one + 1 * square_size / 6
+        x_thr = x_one + 2 * square_size / 6
+        x_fou = x_one + 3 * square_size / 6
+        x_fiv = x_one + 4 * square_size / 6
+        x_six = x_one + 5 * square_size / 6
+        x_sev = x_one + 6 * square_size / 6
+        x_eig = x_one + 7 * square_size / 6
+        x_nin = bottom_sq_bl_x + square_size + padding
+
+        y_center = bottom_sq_bl_y + square_size / 2
+        y_bottom = bottom_sq_bl_y - padding
+
+        count_positions = {
+            1: (x_one, y_center),
+            2: (x_two, y_bottom),
+            3: (x_thr, y_bottom),
+            4: (x_fou, y_bottom),
+            5: (x_fiv, y_bottom),
+            6: (x_six, y_bottom),
+            7: (x_sev, y_bottom),
+            8: (x_eig, y_bottom),
+            9: (x_nin, y_center),
         }
         
+        # draw the lines
+        line_origin = line_origins[serve_positions[number_of_player] - 1]
         for num_key, pos in dest_positions.items():
-            if num_key in inner_dict1:
-                count = inner_dict1[num_key]
-                dest_x, dest_y = pos
-                
-                # Draw the line
-                ax.plot([line_origin[0], dest_x], [line_origin[1], dest_y], 
-                        color='gray', linestyle='--', linewidth=1)
-                
-                # Draw the label (count) at the tip of the line
-                ax.text(dest_x, dest_y, str(count), ha='center', va='center', 
-                        fontsize=11, fontweight='bold',
-                        bbox=dict(facecolor='white', alpha=0.6, pad=0.1, boxstyle='round,pad=0.2'))
+            
+            dest_x, dest_y = pos
+            ax.plot([line_origin[0], dest_x], [line_origin[1], dest_y], 
+                    color='gray', linestyle='--', linewidth=1)
+        
+        # draw the counts
+        for num_key in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
+            # count = inner_dict1[num_key]
+            count = 0
+            
+            # Draw the label (count) at the tip of the line
+            ax.text(count_positions[num_key][0], count_positions[num_key][1], str(count), ha='center', va='center', 
+                    fontsize=7, fontweight='bold', bbox=dict(facecolor='white', alpha=0.6, pad=0.1, boxstyle='round,pad=0.2'))
 
     # --- 4. Save and Show ---
     try:
         plt.savefig(output_filename, bbox_inches='tight', dpi=150)
         print(f"Grid image saved to {output_filename}")
-        plt.show()
     except Exception as e:
         print(f"Error saving or showing plot: {e}")
 
@@ -184,10 +225,11 @@ if __name__ == "__main__":
             loaded_dict = json.loads(line.strip())
             loaded_dicts.append(loaded_dict)
 
-    K1, K2, serves, serve_outcomes = loaded_dicts[0], loaded_dicts[1], loaded_dicts[2], loaded_dicts[3]
+    K1, K2, serves, serve_outcomes, serve_positions = loaded_dicts[0], loaded_dicts[1], loaded_dicts[2], loaded_dicts[3], loaded_dicts[4]
     serves = {int(key): {int(key_): value_ for key_, value_ in value.items()} for key, value in serves.items()}
-    serve_outcomes = {int(key): {int(key_): value_ for key_, value_ in value.items()} for key, value in serve_outcomes.items()}    
+    serve_outcomes = {int(key): {int(key_): value_ for key_, value_ in value.items()} for key, value in serve_outcomes.items()}  
+    serve_positions = {int(key): value for key, value in serve_positions.items()}
 
     # Call the new function
-    draw_stacked_squares(serves, serve_outcomes, output_filename='serves.png')
+    draw_stacked_squares(serves, serve_outcomes, serve_positions, output_filename='serves.png')
 
