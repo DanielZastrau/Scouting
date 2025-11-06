@@ -14,7 +14,7 @@ ColumnData = Dict[int, CircleData]
 DataDict = Dict[int, ColumnData]
 
 
-def draw_squares_with_circles(data: DataDict, output_filename: str = 'circle_plot.png'):
+def draw_squares_with_circles(reception: DataDict, output_filename: str = 'circle_plot.png'):
     """
     Draws a grid of squares based on a nested dictionary.
     
@@ -26,7 +26,7 @@ def draw_squares_with_circles(data: DataDict, output_filename: str = 'circle_plo
     
     # --- 1. Setup the Plot ---
     try:
-        sorted_row_keys = sorted(data.keys())
+        sorted_row_keys = sorted(reception.keys())
         if not sorted_row_keys:
             print("Error: Data dictionary is empty.")
             return
@@ -35,10 +35,10 @@ def draw_squares_with_circles(data: DataDict, output_filename: str = 'circle_plo
         return
 
     # Define column order as requested
-    col_keys = [1, 6, 5]
+    col_keys = ["none", "1", "6", "5"]
     
     num_rows = len(sorted_row_keys)
-    num_cols = len(col_keys)
+    num_cols = len(col_keys) + 1
     
     # Define spacing for each grid cell
     # (Square + text area)
@@ -63,76 +63,77 @@ def draw_squares_with_circles(data: DataDict, output_filename: str = 'circle_plo
     radii = [0.75, 0.45, 0.25] # Large, Medium, Small
     text_y_offsets = [0.75, 0.45, 0.25]
     
+    modifier_first_column = 1.5
+
     # --- 3. Iterate and Draw ---
-    for row_idx, row_key in enumerate(sorted_row_keys):
+    for row_idx, number_of_player in enumerate(sorted_row_keys):
         
         # Calculate y_center for the current row
         # (0,0) is bottom-left, so we reverse the row_idx
         y_center = (num_rows - 1 - row_idx) * cell_height
         
         # Draw Row Label
-        ax.text(-1.0, y_center, f"#{row_key}", ha='center', va='center', 
-                fontsize=12, fontweight='bold')
+        ax.text(-1.0, y_center, f"#{number_of_player}", ha='center', va='center', fontsize=12, fontweight='bold')
         
         for col_idx, col_key in enumerate(col_keys):
             
             # Calculate x_center for the current column
             x_center = col_idx * cell_width
-            
+
             # --- Draw Column Label (for first row only) ---
             if row_idx == 0:
-                ax.text(x_center, fig_height - 0.5, f"Pos: {col_key}", ha='center', va='center', fontsize=12, fontweight='bold')
-            
-            # Check if data exists for this cell
-            if col_key not in data.get(row_key, {}):
-                print(f"Warning: No data for row {row_key}, col {col_key}. Skipping.")
-                continue
-                
-            circle_data = data[row_key][col_key]
+                if col_idx != 0:
+                    ax.text(x_center, fig_height - 0.5, f"Pos: {col_key}", ha='center', va='center', fontsize=12, fontweight='bold')
             
             # --- Draw Concentric Half-Circles ---
-            circle_center_x = x_center - square_size / 5
-            circle_center_y = y_center - square_size / 2
+            if col_idx == 0:
+                circle_center_x = x_center - square_size / 5
+                circle_center_y = y_center - square_size / 2
 
-            circle_colors = ['#FFB6C1', '#FFFFE0', '#90EE90'] 
+                if col_idx == 0:
+                    circle_center_x += modifier_first_column
+
+                circle_colors = ['#FFB6C1', '#FFFFE0', '#90EE90'] 
             
-            # radii = [0.4, 0.3, 0.2] # Large, Medium, Small
-            for i, r in enumerate(radii):
-                color = circle_colors[i]
+                for i, r in enumerate(radii):
+                    color = circle_colors[i]
+                    
+                    # FIX: Use Wedge instead of Arc for a fillable half-circle.
+                    # theta1=0, theta2=180 is the top half.
+                    wedge = patches.Wedge(
+                        (circle_center_x, circle_center_y), r=r, theta1=0, theta2=180,
+                        edgecolor='black', facecolor=color, fill=True, linewidth=0.8
+                    )
+                    ax.add_patch(wedge)
+
+                # --- Draw the Square ---
+                bottom_left_x = x_center - (square_size / 2) + modifier_first_column
+                bottom_left_y = y_center - (square_size / 2)
                 
-                # FIX: Use Wedge instead of Arc for a fillable half-circle.
-                # theta1=0, theta2=180 is the top half.
-                wedge = patches.Wedge(
-                    (circle_center_x, circle_center_y), r=r, theta1=0, theta2=180,
-                    edgecolor='black', facecolor=color, fill=True, linewidth=0.8
-                )
-                ax.add_patch(wedge)
+                square = patches.Rectangle((bottom_left_x, bottom_left_y), square_size, square_size, edgecolor='black', facecolor='none', linewidth=1)
+                ax.add_patch(square)
 
-            # --- Draw the Square ---
-            bottom_left_x = x_center - (square_size / 2)
-            bottom_left_y = y_center - (square_size / 2)
-            
-            square = patches.Rectangle((bottom_left_x, bottom_left_y), square_size, square_size, edgecolor='black', facecolor='none', linewidth=1)
-            ax.add_patch(square)
+                # --- Draw 3m line
+                x_start = x_center - (square_size / 2) + modifier_first_column
+                x_end = x_center + (square_size / 2) + modifier_first_column
+                y = y_center - (square_size / 2) + (square_size / 3)
+
+                ax.plot([x_start, x_end], [y, y], color="black", linewidth=0.7)
 
             # --- Draw Lines and Text ---
-            line_start_x = circle_center_x
-            line_end_x = line_start_x + square_size
-            text_start_x = line_end_x + 0.2
-            
-            # Expects circle_data to have keys 1, 2, 3
-            for i in range(3):
-                circle_key = i + 1
-                text_to_display = circle_data.get(circle_key, "N/A")
-                y_pos = y_center - square_size / 2 + text_y_offsets[i]
+            if col_idx != 0:
+                text_start_x = x_center
                 
-                # Draw horizontal line
-                ax.plot([line_start_x, line_end_x], [y_pos, y_pos], 
-                        color='gray', linewidth=1)
-                
-                # Draw text
-                ax.text(text_start_x, y_pos, text_to_display, 
-                        ha='left', va='center', fontsize=9)
+                map = {0: "4", 1: "3", 2: "2", 3: "1"}
+                mapp = {"1": "perfect", "2": "mehh", "3": "bad", "4": "err"}
+                reception_outcomes = reception[number_of_player][col_key]
+
+                for i in range(4):
+                    text_to_display = f'{mapp[map[i]]}: {reception_outcomes.get(map[i], "N/A")}'
+                    y_pos = y_center + square_size / 2 - (i * square_size / 4)
+                    
+                    # Draw text
+                    ax.text(text_start_x, y_pos, text_to_display, ha='left', va='center', fontsize=9)
 
     # --- 4. Save and Show ---
     try:

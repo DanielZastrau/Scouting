@@ -70,6 +70,8 @@ def rotate(general_information: dict) -> dict:
 
     return general_information
 
+##############################    Serves    ##############################
+
 def add_player_to_serves_dict(serves: dict, player: int) -> dict:
     # services with the outcome 5 "came back over" are counted as aces.
     # the dict for key 0 stands for the errors 
@@ -89,10 +91,12 @@ def add_serve_to_player(serves: dict, player: int, zone: int, outcome: int) -> d
 
     return serves
 
+##############################    Reception    ##############################
+
 def add_player_to_reception_dict(reception: dict, player: int) -> dict:
     # receptions which go back to the opponent are counted as aced
 
-    reception[player] = {i: {1: 0, 2: 0, 3: 0, 4: 0} for i in [1, 3, 5, 6]}
+    reception[player] = {i: {1: 0, 2: 0, 3: 0, 4: 0} for i in [1, 5, 6]}
 
     return reception
 
@@ -101,6 +105,33 @@ def add_reception_to_player(reception: dict, player: int, position: int, outcome
     reception[player][position][outcome] += 1
 
     return reception
+
+##############################    K1 / K2    ##############################
+
+def add_player_to_sets(K1: dict, K2: dict, player: int) -> tuple[dict]:
+    # pos 4 and 6 is always outside, pos 2 and 1 always opposite, pos 3 always middle 
+
+    K1[player] = {i: {j: {k: {l: 0 for l in range(1, 5)} for k in range(1, 7)} for j in range(1, 4)} for i in range(1, 7)}
+    
+    K2[player] = {i: {j: {k : 0 for k in range(1, 5)} for j in range(1, 7)} for i in range(1, 7)}
+
+    return K1, K2
+
+def add_set_to_player(K1: dict, K2: dict, complex, setter, setter_position, reception_quality, position, set_type) -> tuple[dict]:
+    # middles 1 - 4, fast - push - three - back fast
+    # outsides and opposites always a one for now
+
+    # print(setter, setter_position, reception_quality, position, set_type, sep='---')
+
+    if complex == 1:
+        K1[setter][setter_position][reception_quality][position][set_type] += 1
+
+    elif complex == 2:
+        K2[setter][setter_position][position][set_type] += 1
+
+    return K1, K2
+
+##############################    Main    ##############################
 
 def main(filename: str):
 
@@ -133,7 +164,11 @@ def main(filename: str):
     data = [line for line in data if not line.startswith('>')]
 
     positions = {i: 0 for i in range(1, 7)}
+
+    # top level: player nubmer + dict,    second level: setter position + dict,    third level: reception quality + dict,    fourth level: pos + dict,    fifth level: set + count
     K1 = {}
+
+    # top level: player number + dict,    second level: setter position + dict,    third level: pos + dict,    fourth level: set + count
     K2 = {}
 
     # top level: player number + dict,    second level: pos + dict,    third level: outcome + count
@@ -144,7 +179,9 @@ def main(filename: str):
 
     c = 1
     amount_of_serves = 0
-    for line in data:
+    for i, line in enumerate(data):
+        print(f'set: {i + 1}')
+
 
         general_information = {
             'lineup': ['0' for _ in range(6)],
@@ -174,17 +211,24 @@ def main(filename: str):
         general_information = determine_additional_information(general_information)
 
         # currently want to fill serving dicts
-        team_mode = 'none'
-
         mode = 'looking for action'
-        for i, action in enumerate(actions.split(' ')):
+        team_mode = 'none'
+        complex = 0    # 1 for reception, 2 for defense,    only interesting for set distribution, therefore we only care if K1 or K2
+
+        actions = actions.split(' ')
+        for ii, action in enumerate(actions):
+            print(f'action: {ii + 1}')
 
             if action == '':
                 # print('action ended')
                 mode = 'looking for action'
 
             elif mode == 'looking for action':    # then it should only find . or ..,    also the only mode in which the team mode can change and therefore the rotation
+                
                 if action == '.':
+
+                    # print(f'player {curr_server} is serving')
+                    mode = 'looking for serve zone next'
 
                     if team_mode == 'none':
                         team_mode = 'serving'
@@ -196,18 +240,20 @@ def main(filename: str):
                     serving_zone = 0
                     serving_outcome = 0
 
-                    # print(f'player {curr_server} is serving')
-                    mode = 'looking for serve zone next'
+                    complex = 2
 
                 elif action == '..':
+
+                    mode = 'looking for receiving position next'
+                    
                     if team_mode == 'none' or team_mode == 'serving':
                         team_mode = 'receiving'
 
                     receiving_player = 0
                     receiving_position = 0
-                    receiving_outcome = 0
+                    reception_outcome = 0
 
-                    mode = 'looking for receiving position next'
+                    complex = 1
 
                 else:
                     raise Exception(f'ERR: this should not happen. Only defined 2 actions.\n current action: {action}')
@@ -270,13 +316,14 @@ def main(filename: str):
             elif mode == 'looking for reception outcome next':
                 assert 1 <= len(action) <= 5 and action.startswith('.'), 'faulty action'
                 
-                receiving_outcome = len(action)
-                if receiving_outcome == 5:
-                    receiving_outcome = 4
+                reception_outcome = len(action)
+                if reception_outcome == 5:
+                    reception_outcome = 4
 
-                if not receiving_player in reception:
-                    reception = add_player_to_reception_dict(reception, receiving_player)
-                reception = add_reception_to_player(reception, receiving_player, receiving_position, receiving_outcome)
+                if receiving_position in [1, 6, 5]:
+                    if not receiving_player in reception:
+                        reception = add_player_to_reception_dict(reception, receiving_player)
+                    reception = add_reception_to_player(reception, receiving_player, receiving_position, reception_outcome)
 
                 if len(action) == 1:
                     # print('perfect reception.')
@@ -301,6 +348,8 @@ def main(filename: str):
                     raise Exception('ERR: this should not happen. Only defined 4 reception outcomes')
 
             elif mode == 'looking for possible return of the ball':
+                complex = 2
+
                 if action == '':
                     # print('action ended')
                     mode = 'looking for action'
@@ -314,19 +363,30 @@ def main(filename: str):
                     mode = 'looking for set destination next'
 
             elif mode == 'looking for set destination next':
+
                 if 1 <= len(action) <= 6:
                     # print(f'ball was set to player on position {len(action)}')
                     mode = 'looking for type of set next'
+
+                    set_position = len(action)
+                    set_type = 0
 
                 else:
                     raise Exception('ERR: this should not happen. Ball has to be set to a position on the court.')
 
             elif mode == 'looking for type of set next':
-                if actions[i - 1] != '...':    # in this case the action will always be '.'
+                set_type = len(action)
+
+                if general_information['setter'] not in K1:
+                    K1, K2 = add_player_to_sets(K1, K2, general_information['setter'])
+                K1, K2 = add_set_to_player(K1, K2, complex, general_information['setter'], general_information['rotation'].index('S') + 1, reception_outcome, set_position, set_type)
+
+                if actions[ii - 1] != '...':    # in this case the action will always be '.', since a non middle was set
                     # print('standard set')
                     mode = 'looking for zone of hit next'
 
-                elif action[i - 1] == '...':
+                elif actions[ii - 1] == '...':    # then a middle was set
+
                     if action == '.':
                         # print('fast ball')
                         mode = 'looking for zone of hit next'
@@ -374,10 +434,10 @@ def main(filename: str):
                     mode = 'looking for set destination next'
 
                 else:
-                    raise Exception('ERR: this should not happen. This mode is not defined.')
+                    raise Exception(f'ERR: this should not happen. This mode is not defined.\n{actions[i-6: i+1]}')
 
             else:
-                raise Exception(f'ERR: this should not happen. This mode is not defined. mode: {mode}')
+                raise Exception(f'ERR: this should not happen. This mode is not defined. mode: {mode}\n{actions[i-6: i]}')
             
             # print(mode)
             
