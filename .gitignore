@@ -1,3 +1,8 @@
 *.png
 *.pdf
 *.log
+*.txt
+venv/
+__pycache__/
+
+ToDo.md

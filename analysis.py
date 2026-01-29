@@ -2,154 +2,47 @@ import argparse
 import os
 import json
 
-# need the libero
-# need reception stats
-# need hitting stats
-# need setting stats
+from lineup import Lineup
 
-def determine_receiving_players(general_information: dict) -> dict:
-    
-    receiving_players = {1: 0, 6: 0, 5: 0, 3: 0}
-    
-    rotation = general_information['rotation'].index('S')
-    if rotation == 0:
-        receiving_players[1] = general_information['lineup'][1]
-        receiving_players[6] = general_information['lineup'][5]
-        receiving_players[5] = general_information['lineup'][4]
-        receiving_players[3] = general_information['lineup'][2]
+from helpers import determine_lineup
 
-    elif rotation == 1:
-        receiving_players[1] = general_information['lineup'][0]
-        receiving_players[6] = general_information['lineup'][5]
-        receiving_players[5] = general_information['lineup'][2]
-        receiving_players[3] = general_information['lineup'][3]
-
-    elif rotation == 2:
-        receiving_players[1] = general_information['lineup'][0]
-        receiving_players[6] = general_information['lineup'][4]
-        receiving_players[5] = general_information['lineup'][3]
-        receiving_players[3] = general_information['lineup'][1]
-
-    elif rotation == 3:
-        receiving_players[1] = general_information['lineup'][5]
-        receiving_players[6] = general_information['lineup'][4]
-        receiving_players[5] = general_information['lineup'][1]
-        receiving_players[3] = general_information['lineup'][2]
-
-    elif rotation == 4:
-        receiving_players[1] = general_information['lineup'][0]
-        receiving_players[6] = general_information['lineup'][5]
-        receiving_players[5] = general_information['lineup'][2]
-        receiving_players[3] = general_information['lineup'][3]
-
-    elif rotation == 5:
-        receiving_players[1] = general_information['lineup'][0]
-        receiving_players[6] = general_information['lineup'][4]
-        receiving_players[5] = general_information['lineup'][3]
-        receiving_players[3] = general_information['lineup'][1]
-
-    general_information['receiving players'] = receiving_players
-
-    return general_information
-
-def determine_additional_information(general_information: dict) -> dict:
-
-    general_information = determine_receiving_players(general_information)
-
-    return general_information
-
-def rotate(general_information: dict) -> dict:
-
-    lineup = general_information['lineup']
-    general_information['lineup'] = lineup[1:] + lineup[:1]
-
-    rotation = general_information['rotation']
-    general_information['rotation'] = rotation[1:] + rotation[:1]
-
-    general_information = determine_additional_information(general_information)
-
-    return general_information
-
-##############################    Serves    ##############################
-
-def add_player_to_serves_dict(serves: dict, player: int) -> dict:
-    # services with the outcome 5 "came back over" are counted as aces.
-    # the dict for key 0 stands for the errors 
-
-    serves[player] = {i: {1: 0, 2: 0, 3: 0,} for i in range(10)}
-
-    return serves
-
-def add_serve_to_player(serves: dict, player: int, zone: int, outcome: int) -> dict:
-
-    if outcome == 4:
-        serves[player][0][1] += 1
-        serves[player][0][2] += 1
-        serves[player][0][3] += 1
-    else:
-        serves[player][zone][outcome] += 1
-
-    return serves
-
-##############################    Reception    ##############################
-
-def add_player_to_reception_dict(reception: dict, player: int) -> dict:
-    # receptions which go back to the opponent are counted as aced
-
-    reception[player] = {i: {1: 0, 2: 0, 3: 0, 4: 0} for i in [1, 5, 6]}
-
-    return reception
-
-def add_reception_to_player(reception: dict, player: int, position: int, outcome: int) -> dict:
-
-    reception[player][position][outcome] += 1
-
-    return reception
-
-##############################    K1 / K2    ##############################
-
-def add_player_to_sets(K1: dict, K2: dict, player: int) -> tuple[dict]:
-    # pos 4 and 6 is always outside, pos 2 and 1 always opposite, pos 3 always middle 
-
-    K1[player] = {i: {j: {k: {l: 0 for l in range(1, 5)} for k in range(1, 7)} for j in range(1, 4)} for i in range(1, 7)}
-    
-    K2[player] = {i: {j: {k : 0 for k in range(1, 5)} for j in range(1, 7)} for i in range(1, 7)}
-
-    return K1, K2
-
-def add_set_to_player(K1: dict, K2: dict, complex, setter, setter_position, reception_quality, position, set_type) -> tuple[dict]:
-    # middles 1 - 4, fast - push - three - back fast
-    # outsides and opposites always a one for now
-
-    # print(setter, setter_position, reception_quality, position, set_type, sep='---')
-
-    if complex == 1:
-        K1[setter][setter_position][reception_quality][position][set_type] += 1
-
-    elif complex == 2:
-        K2[setter][setter_position][position][set_type] += 1
-
-    return K1, K2
+# want reception stats
+# want hitting stats
+# want setting stats
 
 ##############################    Main    ##############################
 
 def main(filename: str):
 
-    with open(os.path.join(os.getcwd(), filename), 'r', encoding='utf-8') as file:
+    # create a folder for the analysis files
+    if not os.path.isdir(os.path.join(os.getcwd(), 'analysis', filename)):
+        os.mkdir(os.path.join(os.getcwd(), 'analysis', filename))
+
+
+    # get the scouting file    
+    with open(os.path.join(os.getcwd(), 'scouting', filename), 'r', encoding='utf-8') as file:
         data = file.read()
+
 
     # filter out irrelevant lines
     data = data.split('\n')
     data = [line for line in data if (not line.startswith('#')) and (len(line) != 0)]
 
+
     # read out serve positions
     serve_positions = {}
+
+    print(data[0])
 
     positions = data[0].split('  ')[1:]
     for position in positions:
         number, pos = position.split(' ')
 
         serve_positions[number] = int(pos)
+
+    with open(os.path.join(os.getcwd(), 'analysis', filename, 'serve_positions.txt'), 'w', encoding='utf-8') as outfile:
+        outfile.write(json.dumps(serve_positions, indent=4))
+
 
     # read out serve type
     serve_types = {}
@@ -160,8 +53,12 @@ def main(filename: str):
 
         serve_types[number] = type__
 
-    # remove serve pos line
+    with open(os.path.join(os.getcwd(), 'analysis', filename, 'serve_types.txt'), 'w', encoding='utf-8') as outfile:
+        outfile.write(json.dumps(serve_types))
+
+    # remove serve pos line and serve type line
     data = [line for line in data if not line.startswith('>')]
+
 
     positions = {i: 0 for i in range(1, 7)}
 
@@ -182,49 +79,35 @@ def main(filename: str):
     for i, line in enumerate(data):
         print(f'set: {i + 1}')
 
-
-        general_information = {
-            'lineup': ['0' for _ in range(6)],
-            'setter': 0,
-            'rotation': ['p', 'p', 'p', 'p', 'p', 'p',]
-        }
-
         lineup, actions = line.split('>')
-        for i, e in enumerate(lineup.split(' ')):
-            if e == ' ' or e == '': continue
 
-            if e.endswith('S'):
-                general_information['setter'] = e[:-1]
 
-                general_information['rotation'][i] = 'S'
-                general_information['rotation'][(i + 3) % 6] = 'O'
-                general_information['rotation'][(i + 1) % 6] = 'OH'
-                general_information['rotation'][(i + 4) % 6] = 'OH'
-                general_information['rotation'][(i + 2) % 6] = 'M'
-                general_information['rotation'][(i + 5) % 6] = 'M'
+        # Determine lineup
+        lineup = determine_lineup(lineup)
 
-                general_information['lineup'][i] = e[:-1]
-            
-            elif not e.endswith('S'):
-                general_information['lineup'][i] = e
-
-        general_information = determine_additional_information(general_information)
 
         # currently want to fill serving dicts
         mode = 'looking for action'
         team_mode = 'none'
-        complex = 0    # 1 for reception, 2 for defense,    only interesting for set distribution, therefore we only care if K1 or K2
+        
+        # 1 for reception, 2 for defense,
+        # only interesting for set distribution, therefore we only care if K1 or K2
+        complex = 0    
 
         actions = actions.split(' ')
         for ii, action in enumerate(actions):
-            print(f'action: {ii + 1}')
+
 
             if action == '':
                 # print('action ended')
                 mode = 'looking for action'
 
-            elif mode == 'looking for action':    # then it should only find . or ..,    also the only mode in which the team mode can change and therefore the rotation
+
+            # then it should only find . or ..
+            # also the only mode in which the team mode can change and therefore the rotation
+            elif mode == 'looking for action':    
                 
+                # .  --  indicates a serve
                 if action == '.':
 
                     # print(f'player {curr_server} is serving')
@@ -234,40 +117,47 @@ def main(filename: str):
                         team_mode = 'serving'
                     elif team_mode == 'receiving':
                         team_mode = 'serving'
-                        general_information = rotate(general_information)
 
-                    curr_server = general_information['lineup'][0]
+                        lineup.rotate_lineup()
+
+                    curr_server = lineup.get_server()
                     serving_zone = 0
                     serving_outcome = 0
 
+                    # to reiterate  --  1 for K1,  2 for K2
                     complex = 2
 
+                # ..  --  indicates a reception
                 elif action == '..':
 
                     mode = 'looking for receiving position next'
                     
-                    if team_mode == 'none' or team_mode == 'serving':
-                        team_mode = 'receiving'
+                    team_mode = 'receiving'
 
                     receiving_player = 0
                     receiving_position = 0
                     reception_outcome = 0
 
+                    # to reiterate  --  1 for K1,  2 for K2
                     complex = 1
 
                 else:
                     raise Exception(f'ERR: this should not happen. Only defined 2 actions.\n current action: {action}')
 
-            elif mode == 'looking for serve zone next':    # this should be a group of . of lengths 1 - 9
-                if 1 <= len(action) <= 9:
-                    mode = 'looking for serve outcome next'
 
-                    serving_zone = len(action)
+            # this should be a group of . of lengths 1 - 9
+            elif mode == 'looking for serve zone next':    
+                
+                assert 1 <= len(action) <= 9, \
+                    f'ERR:  this should not happen. Only 9 service zones are defined'
 
-                else:
-                    raise Exception('ERR: this should not happen. Only defined 9 serve zones.')
+                mode = 'looking for serve outcome next'
+                
+                serving_zone = len(action)
 
-            elif mode == 'looking for receiving position next':    # this should be a group of . of lengths 1 - 6
+
+            # this should be a group of . of lengths 1 - 6
+            elif mode == 'looking for receiving position next':
                 if len(action) == 0:
                     # print('opposing team missed their serve.')
                     mode = 'looking for action'
@@ -447,7 +337,7 @@ def main(filename: str):
             json_string = json.dumps(d)
             file.write(json_string + '\n')
 
-if __name__ == '__main__':
+if __name__ == '__main__': 
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--filename',)

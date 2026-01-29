@@ -1,5 +1,6 @@
 # Notation for scouting
 * the > denotes the line detailing the positions from which each player serves
+  * 1 denotes the left sideline, 5 the right, 2-4 align in between
 
 * the >> denotes the types of serves the players do
   * s for spin,  f for float,  h for hybrid
@@ -7,12 +8,17 @@
 * each line represents a set
 
 * for each set:  seperated by ">" from the rest with spaces in between is the starting lineup for each set
-  * the number which has an S behind it is the setter
-  *     7 24 10S 20 4 14>. . ....  .. ...... . ... .. ... .
+  * first the lineup from position 1 to position 6,  then the setter is repeated and lastly the starting libero
+  *     7 24 10 20 4 14 10 9>. . ....  .. ...... . ... .. ... .
 
 * a set is seperated into plays by double spaces "  " called breaks and a play is seperated into actions by single spaces " "
   * the first action after a break is denotes whether the team being scouted is serving or receiving
-  *    . is serve    .. is reception
+  *     . is serve    
+  *     .. is reception
+
+* a player substitution is denoted as follows and has to be preceded by a break and followed by one
+  *     <x-y>
+  * the player with number x is swapped for the player with number y 
 
 * a serve
   * is followed by a serve zone
