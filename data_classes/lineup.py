@@ -5,17 +5,17 @@ class Lineup():
     meta positions are: OH, MI, OP, S
     """
 
-    def __init__(self, setter: int, libero: int, lineup: list, meta: list):
+    def __init__(self):
 
-        self.setter = setter
-        self.libero = libero
+        self.setter: int
+        self.libero: int
 
         # lineup is supposed to be the actual lineup with the middle in the backcourt
         # indeces are one down of position, i.e. position 1 is at index 0
-        self.lineup = lineup
+        self.lineup: list[int]
         
         # meta has to be correlated with self.lineup
-        self.meta = meta
+        self.meta: list[str]
 
 
     # getters
@@ -43,6 +43,8 @@ class Lineup():
 
 
     def get_rotation(self) -> int:
+        """Returns the rotation as values 0 - 5
+        """
         return self.lineup.index(self.setter)
 
 
@@ -75,13 +77,90 @@ class Lineup():
             receiving_positions[empyt_position] = backcourt_players[backcourt_meta.index('OH')]
 
 
+    def get_receiving_player_on_position(self, position: int) -> int:
+
+        receiving_positions = self.get_receiving_players()
+
+        return receiving_positions[position]
+
+
+    def get_hitting_player_on_position(self, position: int) -> int:
+        """Careful! The position passed is given as 1 - 6, but the positions in the lineup are stored as 0 - 5
+
+        hopefully the other cases just don't occur, for example setter in front but set destination 2
+        """
+
+        rotation = self.get_rotation()
+
+        frontcourt_players, frontcourt_meta = self.get_frontcourt()
+        backcourt_players, backcourt_meta = self.get_backcourt()
+
+        if position == 1:
+            return backcourt_players[backcourt_meta.index('OP')]
+
+        if position == 2:
+            if rotation == 0:
+                return frontcourt_players[frontcourt_meta.index('OH')]
+            else:
+                return frontcourt_players[frontcourt_meta.index('OP')]
+
+        # middle was set
+        if position == 3:
+            return frontcourt_players[frontcourt_meta.index('MI')]
+
+        if position == 4:
+            if rotation == 0:
+                return frontcourt_players[frontcourt_meta.index('OP')]
+            else:
+                return frontcourt_players[frontcourt_meta.index('OH')]
+
+        if position == 6:
+            return backcourt_players[backcourt_meta.index('OH')]
+
+        # special case of setter dump
+        if position == 7:
+            return self.setter
+
+
     def get_server(self) -> int:
         return self.lineup[0]
 
 
     # modifiers
 
-    def modify_lineup(self, player_out, player_in):
+    def determine_lineup(self, lineup: str):
+        """3 15 8 11 13 12 12 2>.. .. .. 
+        """
+
+        lineup = list(map(int, lineup.split(' ')))
+
+        # libero is always the last person noted
+        self.libero = lineup[-1]
+
+        # setter is the second to last person
+        self.setter = lineup[-2]
+
+        # the 6 people before that are the lineup
+        self.lineup = lineup[:-2]
+
+        # determine meta
+        self.meta = ['', '', '', '', '', '']
+
+        setter_index = self.lineup.index(self.setter)
+
+        self.meta[setter_index] = 'S'
+        self.meta[(setter_index + 3) % 6] = 'O'
+        self.meta[(setter_index + 1) % 6] = 'OH'
+        self.meta[(setter_index + 4) % 6] = 'OH'
+        self.meta[(setter_index + 2) % 6] = 'M'
+        self.meta[(setter_index + 5) % 6] = 'M'
+
+
+    def modify_lineup(self, substitution: str):
+        """e.g. <12-13>
+        """
+        relevant = substitution[1:-1]
+        player_out, player_in = list(map(int, relevant.split('-')))
 
         if player_out == self.libero:
             self.modify_libero(player_in)

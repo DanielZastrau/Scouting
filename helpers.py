@@ -1,33 +1,4 @@
-from lineup import Lineup
 
-def determine_lineup(lineup: str) -> Lineup:
-
-    lineup = list(map(int, lineup.split(' ')))
-
-    # libero is always the last person noted
-    libero = lineup[-1]
-
-    # setter is the second to last person
-    setter = lineup[-2]
-
-    # the 6 people before that are the lineup
-    lineup = lineup[:-2]
-
-    # determine meta
-    meta = ['', '', '', '', '', '']
-
-    setter_index = lineup.index(setter)
-
-    meta[setter_index] = 'S'
-    meta[(setter_index + 3) % 6] = 'O'
-    meta[(setter_index + 1) % 6] = 'OH'
-    meta[(setter_index + 4) % 6] = 'OH'
-    meta[(setter_index + 2) % 6] = 'M'
-    meta[(setter_index + 5) % 6] = 'M'
-
-    lineup = Lineup(setter, libero, lineup, meta)
-
-    return lineup
 
 
 ##############################    Serves    ##############################

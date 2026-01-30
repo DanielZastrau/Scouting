@@ -11,14 +11,14 @@
   * first the lineup from position 1 to position 6,  then the setter is repeated and lastly the starting libero
   *     7 24 10 20 4 14 10 9>. . ....  .. ...... . ... .. ... .
 
-* a set is seperated into plays by double spaces "  " called breaks and a play is seperated into actions by single spaces " "
+* a set is seperated into plays by double spaces "  " called breaks and a play is seperated into actions by single spaces " " called pauses
   * the first action after a break is denotes whether the team being scouted is serving or receiving
-  *     . is serve    
+  *     . is serve
   *     .. is reception
 
 * a player substitution is denoted as follows and has to be preceded by a break and followed by one
   *     <x-y>
-  * the player with number x is swapped for the player with number y 
+  * the player with number x is swapped out for the player with number y 
 
 * a serve
   * is followed by a serve zone
@@ -26,7 +26,9 @@
   * is followed by either a break (ace or error) or a set destination (ball was returned [either overpass or by attack])
   
 * a reception
+  * is followed by a reception type
   * is followed by a receiving position
+    * if a reception type is followed by a break, that means that the serve was an error
   * is followed by a reception quality
   * is followed by a set destination
     * special case:  the setter dumps it
@@ -48,6 +50,11 @@
   * 2  came back over
   * 3  received
   * 4  error
+
+* reception type 1 - 3
+  * 1  float
+  * 2  jumper
+  * 3  hybrid
 
 * receiving position 1 - 6 - 5 - 3
 
@@ -71,10 +78,16 @@
     * 1  shoot
     * 2  normal
     * 3  high
+  * setter dump:
+    * 1  -
 
 * attack zone 1 - 5
-  * 1  leftmost
-  * 5  rightmost
+  * attackers:
+    * 1  leftmost
+    * 5  rightmost
+  * setter dump:
+    * 1  left half of court
+    * 2  right half of court
 
 * attack outcome 1 - 5
   * 1  point

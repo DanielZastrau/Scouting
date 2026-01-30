@@ -2,21 +2,28 @@ import argparse
 import os
 import json
 
-from lineup import Lineup
+from data_classes.lineup import Lineup
 
-from helpers import determine_lineup
+from data_classes.serve_positions import ServePositions
+from data_classes.serve_types import ServeTypes
+from data_classes.serves import Serves
 
-# want reception stats
-# want hitting stats
-# want setting stats
+from data_classes.receptions import Receptions
+
+from data_classes.sets import Sets
+
+from data_classes.hits import Hits
+
 
 ##############################    Main    ##############################
 
 def main(filename: str):
 
+    analysis_dir_path = os.path.join(os.getcwd(), 'analysis', filename)
+
     # create a folder for the analysis files
-    if not os.path.isdir(os.path.join(os.getcwd(), 'analysis', filename)):
-        os.mkdir(os.path.join(os.getcwd(), 'analysis', filename))
+    if not os.path.isdir(analysis_dir_path):
+        os.mkdir(analysis_dir_path)
 
 
     # get the scouting file    
@@ -30,99 +37,83 @@ def main(filename: str):
 
 
     # read out serve positions
-    serve_positions = {}
-
-    print(data[0])
-
-    positions = data[0].split('  ')[1:]
-    for position in positions:
-        number, pos = position.split(' ')
-
-        serve_positions[number] = int(pos)
-
-    with open(os.path.join(os.getcwd(), 'analysis', filename, 'serve_positions.txt'), 'w', encoding='utf-8') as outfile:
-        outfile.write(json.dumps(serve_positions, indent=4))
+    serve_positions = ServePositions()
+    serve_positions.extract_serve_positions(data[0])
+    serve_positions.save(analysis_dir_path)
 
 
     # read out serve type
-    serve_types = {}
+    serve_types = ServeTypes()
+    serve_types.extract_serve_types(data[1])
+    serve_types.save(analysis_dir_path)
 
-    types = data[1].split('  ')[2:]
-    for type_ in types:
-        number, type__ = type_.split(' ')
-
-        serve_types[number] = type__
-
-    with open(os.path.join(os.getcwd(), 'analysis', filename, 'serve_types.txt'), 'w', encoding='utf-8') as outfile:
-        outfile.write(json.dumps(serve_types))
 
     # remove serve pos line and serve type line
     data = [line for line in data if not line.startswith('>')]
 
 
-    positions = {i: 0 for i in range(1, 7)}
-
-    # top level: player nubmer + dict,    second level: setter position + dict,    third level: reception quality + dict,    fourth level: pos + dict,    fifth level: set + count
-    K1 = {}
-
-    # top level: player number + dict,    second level: setter position + dict,    third level: pos + dict,    fourth level: set + count
-    K2 = {}
-
-    # top level: player number + dict,    second level: pos + dict,    third level: outcome + count
-    reception = {}
-    
-    # top level: player number + dict,    second level: zone + dict,    third level: outcome + count
-    serves = {}
+    # define information dataclasses to be filled
+    serves = Serves()
+    receptions = Receptions()
+    sets_c1 = Sets(complex=1)
+    sets_c2 = Sets(complex=2)
+    hits = Hits()
 
     c = 1
     amount_of_serves = 0
     for i, line in enumerate(data):
         print(f'set: {i + 1}')
 
-        lineup, actions = line.split('>')
+        lineup_, actions = line.split('>')
 
 
         # Determine lineup
-        lineup = determine_lineup(lineup)
+        lineup = Lineup()
+        lineup.determine_lineup(lineup_)
 
 
         # currently want to fill serving dicts
         mode = 'looking for action'
         team_mode = 'none'
         
+
         # 1 for reception, 2 for defense,
         # only interesting for set distribution, therefore we only care if K1 or K2
         complex = 0    
 
+
+        # pauses vanish
+        # breaks become empty strings ''
         actions = actions.split(' ')
         for ii, action in enumerate(actions):
 
 
             if action == '':
-                # print('action ended')
                 mode = 'looking for action'
 
+
+            # indicates a substituion
+            elif action.startswith('<'):
+                lineup.modify_lineup(substitution=action)
 
             # then it should only find . or ..
             # also the only mode in which the team mode can change and therefore the rotation
             elif mode == 'looking for action':    
                 
+                assert action in ['.', '..'], f'action {action} not eligible. Only serve or reception can be expected here.'
+
                 # .  --  indicates a serve
                 if action == '.':
-
-                    # print(f'player {curr_server} is serving')
                     mode = 'looking for serve zone next'
 
-                    if team_mode == 'none':
-                        team_mode = 'serving'
-                    elif team_mode == 'receiving':
-                        team_mode = 'serving'
-
+                    if team_mode == 'receiving':
                         lineup.rotate_lineup()
 
-                    curr_server = lineup.get_server()
-                    serving_zone = 0
-                    serving_outcome = 0
+                    team_mode = 'serving'
+
+                    serves_player = lineup.get_server()
+                    serves_zone = 0
+                    serves_outcome = 0
 
                     # to reiterate  --  1 for K1,  2 for K2
                     complex = 2
@@ -130,212 +121,179 @@ def main(filename: str):
                 # ..  --  indicates a reception
                 elif action == '..':
 
-                    mode = 'looking for receiving position next'
+                    mode = 'looking for reception type next'
                     
                     team_mode = 'receiving'
 
-                    receiving_player = 0
-                    receiving_position = 0
-                    reception_outcome = 0
+                    receptions_player = 0
+                    receptions_type = ''
+                    receptions_position = 0
+                    receptions_outcome = 0
 
-                    # to reiterate  --  1 for K1,  2 for K2
+                    # to reiterate  --  1 for K1  --  2 for K2
                     complex = 1
 
-                else:
-                    raise Exception(f'ERR: this should not happen. Only defined 2 actions.\n current action: {action}')
+
+            #--------------------------------------------------------------------------------------
 
 
             # this should be a group of . of lengths 1 - 9
-            elif mode == 'looking for serve zone next':    
+            elif mode == 'looking for serve zone next':
                 
-                assert 1 <= len(action) <= 9, \
-                    f'ERR:  this should not happen. Only 9 service zones are defined'
+                assert 1 <= len(action) <= 9, f'ERR:  action {action} not eligible. Only 9 service zones are defined'
 
                 mode = 'looking for serve outcome next'
                 
-                serving_zone = len(action)
+                serves_zone = len(action)
 
 
-            # this should be a group of . of lengths 1 - 6
-            elif mode == 'looking for receiving position next':
-                if len(action) == 0:
-                    # print('opposing team missed their serve.')
-                    mode = 'looking for action'
+            # . ace, .. came back over, ... received, .... err
+            elif mode == 'looking for serve outcome next':
 
-                elif 1 <= len(action) <= 6:
-                    receiving_position = len(action)
-                    receiving_player = general_information['receiving players'][receiving_position]
-
-                    mode = 'looking for reception outcome next'
-
-                else:
-                    raise Exception('ERR: this should not happen. A position which does not exist, cannot receive.')
-
-            elif mode == 'looking for serve outcome next':    # . ace, .. good reception, ... bad reception, .... err, ..... came back over free ball
-                assert 1 <= len(action) <= 5 and action.startswith('.'), 'faulty bit'
+                assert 1 <= len(action) <= 4, f'ERR:  action {action} not eligible. Only 4 service outcomes are defined' 
                 
-                serving_outcome = len(action)
-                if serving_outcome == 5: 
-                    serving_outcome = 1
+                serves_outcome = len(action)
 
-                if not curr_server in serves:
-                    serves = add_player_to_serves_dict(serves, curr_server)
-                serves = add_serve_to_player(serves, curr_server, serving_zone, serving_outcome)
+                serves.add_serve_to_player(serves_player, serves_zone, serves_outcome)
                 
+                # .  --  ace
                 if len(action) == 1:
                     mode = 'ace'    # after this I can expect there to be an empty string
 
+                # ..  --  came back over
                 elif len(action) == 2:
-                    # print('good reception opposing team')
-                    mode = 'looking for possible return of the ball'
+                    mode = 'looking for set destination next'
 
+                # ...  --  received
                 elif len(action) == 3:
-                    # print('bad reception opposing team')
                     mode = 'looking for possible return of the ball'
 
+                # ....  --  error
                 elif len(action) == 4:
                     mode = 'service was an error'    # after this I can expect there to be an empty string
 
-                elif len(action) == 5:
-                    # print('service wasnt an ace, but came straight back.')
-                    mode = 'looking for set destination next'
 
-                else:
-                    raise Exception('ERR: this should not happen. No other service outcome defined.')
+            #--------------------------------------------------------------------------------------
 
-            elif mode == 'looking for reception outcome next':
-                assert 1 <= len(action) <= 5 and action.startswith('.'), 'faulty action'
-                
-                reception_outcome = len(action)
-                if reception_outcome == 5:
-                    reception_outcome = 4
 
-                if receiving_position in [1, 6, 5]:
-                    if not receiving_player in reception:
-                        reception = add_player_to_reception_dict(reception, receiving_player)
-                    reception = add_reception_to_player(reception, receiving_player, receiving_position, reception_outcome)
+            # . float, .. jumper, ... hybrid
+            elif mode == 'looking for reception type next':
 
-                if len(action) == 1:
-                    # print('perfect reception.')
-                    mode = 'looking for set destination next'
+                assert 1 <= len(action) <= 3, f'ERR: action {action} not eligible. Only 3 reception types are defined'
 
-                elif len(action) == 2:
-                    # print('mehh reception')
-                    mode = 'looking for set destination next'
+                mode = 'looking for receiving position next'
 
-                elif len(action) == 3:
-                    # print('bad reception')
-                    mode = 'looking for set destination next'
+                receptions_type = len(action)
 
-                elif len(action) == 4:
-                    mode = 'aced'    # after this I can expect there to be an empty string
 
-                elif len(action) == 5:
-                    # print('ball was directly returned to the opposing team.')
-                    mode = 'looking for possible return of the ball'
+            # ... pos 3, ..... pos 5, ...... pos 6, . pos 1
+            elif mode == 'looking for receiving position next':
 
-                else:
-                    raise Exception('ERR: this should not happen. Only defined 4 reception outcomes')
+                assert len(action) in [0, 1, 3, 5, 6], f'ERR: action {action} not eligible. Only 5 receiving positions are defined.'
 
-            elif mode == 'looking for possible return of the ball':
-                complex = 2
-
-                if action == '':
-                    # print('action ended')
+                # opposing team missed their serve
+                if len(action) == 0:
                     mode = 'looking for action'
 
-                elif action == ',':
-                    # print('ball was returned as a hit')
-                    mode = 'looking for set destination next'
+                elif 1 <= len(action) <= 6:
+                    receptions_position = len(action)
+                    receptions_player = lineup.get_receiving_player_on_position(receptions_position)
 
-                elif action == ',,':
-                    # print('ball was returned as a free ball')
-                    mode = 'looking for set destination next'
+                    mode = 'looking for reception outcome next'
 
+
+            # . perfect, .. okay, ... bad, ... error (aced / back over the net)
+            elif mode == 'looking for reception outcome next':
+
+                assert 1 <= len(action) <= 4, f'ERR: action {action} not eligible. Only 4 reception outcomes are defined'
+                
+                receptions_outcome = len(action)
+
+                receptions.add_reception_to_player(receptions_player, receptions_type, receptions_outcome)
+
+                mode = 'looking for set destination next'
+            
+                # if it was an ace,  then the next action is an empty string
+                # if it came back over the next,  then the next action of the team being scouted
+                #     is technically a defense,  which is not being taken into account,
+                #     thus the next action would be a set
+
+
+            #--------------------------------------------------------------------------------------
+
+
+            # 1 - 7,  7 is for setter dump
             elif mode == 'looking for set destination next':
 
-                if 1 <= len(action) <= 6:
-                    # print(f'ball was set to player on position {len(action)}')
-                    mode = 'looking for type of set next'
+                assert 1 <= len(action) <= 7, f'ERR: action {action} not eligible. Only 7 set destinations are defined.'
 
-                    set_position = len(action)
-                    set_type = 0
+                mode = 'looking for type of set next'
 
-                else:
-                    raise Exception('ERR: this should not happen. Ball has to be set to a position on the court.')
+                sets_destination = len(action)
 
+                # careful the set destination is given as 1 - 6,  the lineup positions are stored as 0 - 5
+                hits_player = lineup.get_hitting_player_on_position(sets_destination)
+
+            # 1 - 4
             elif mode == 'looking for type of set next':
-                set_type = len(action)
 
-                if general_information['setter'] not in K1:
-                    K1, K2 = add_player_to_sets(K1, K2, general_information['setter'])
-                K1, K2 = add_set_to_player(K1, K2, complex, general_information['setter'], general_information['rotation'].index('S') + 1, reception_outcome, set_position, set_type)
+                assert 1 <= len(action) <= 4, f'ERR: action {action} not eligible. Only 4 set types are defined.'
 
-                if actions[ii - 1] != '...':    # in this case the action will always be '.', since a non middle was set
-                    # print('standard set')
-                    mode = 'looking for zone of hit next'
+                sets_type = len(action)
 
-                elif actions[ii - 1] == '...':    # then a middle was set
+                if complex == 1:
+                    sets_c1.add_set_to_player(lineup.setter, sets_destination, sets_type)
+                elif complex == 2:
+                    sets_c2.add_set_to_player(lineup.setter, sets_destination, sets_type)
 
-                    if action == '.':
-                        # print('fast ball')
-                        mode = 'looking for zone of hit next'
+                mode = 'looking for zone of hit next'
 
-                    elif action == '..':
-                        # print('push ball')
-                        mode = 'looking for zone of hit next'
 
-                    elif action == '...':
-                        # print('shoot ball')
-                        mode = 'looking for zone of hit next'
+            #--------------------------------------------------------------------------------------
 
-                    elif action == '....':
-                        # print('back fast')
-                        mode = 'looking for zone of hit next'
 
-                    else:
-                        raise Exception('ERR: this should not happen. Only 4 cases defined')
-                
-                else:
-                    raise Exception('ERR: this should not happen. Only 6 positions on the court.')
-
+            # 1 - 5,  from leftmost to rightmost,  just divide the court equally
             elif mode == 'looking for zone of hit next':
-                if 1 <= len(action) <= 5:
-                    # print(f'ball was hit to zone {len(action)}')
-                    mode = 'looking for outcome of hit next'
 
+                assert 1 <= len(action) <= 5, f'ERR: action {action} not eligible. Only 5 hitting zones are defined.'
+
+                mode = 'looking for outcome of hit next'
+
+                hits_zone = len(action)
+
+
+            # . point,  .. defended,  ... blocked,  .... error
             elif mode == 'looking for outcome of hit next':
+
+                assert 1 <= len(action) <= 4, f'ERR: action {action} not eligible. Only 4 hitting outcomes are defined.'
+
+                hits_outcome = len(action)
+
+                hits.add_hit_to_player(hits_player, sets_destination, sets_type, hits_zone, hits_outcome)
+
+                # .  --  point
                 if action == '.':
                     mode = 'point'
 
+                # ..  --  defended  --  that includes a defense which comes straight back over and rebound off the block
                 elif action == '..':
-                    # print('defended')
-                    mode = 'looking for possible return of the ball'
+                    mode = 'looking for set destination next'
 
+                # ...  --  blocked
                 elif action == '...':
-                    # print('defended, but came back over')
-                    mode = 'looking for set destination next'
+                    mode = 'blocked'    # after this I can expect there to be an empty string
 
+                # ....  --  error
                 elif action == '....':
-                    mode = 'error'
-
-                elif action == '.....':
-                    # print('rebound')
-                    mode = 'looking for set destination next'
-
-                else:
-                    raise Exception(f'ERR: this should not happen. This mode is not defined.\n{actions[i-6: i+1]}')
-
-            else:
-                raise Exception(f'ERR: this should not happen. This mode is not defined. mode: {mode}\n{actions[i-6: i]}')
+                    mode = 'error'    # after this I can expect there to be an empty string
             
-            # print(mode)
-            
-    dicts_to_write = [K1, K2, serves, serve_positions, reception]
-    with open(os.path.join(os.getcwd(), f'analysis_{filename}'), 'w', encoding='utf-8') as file:
-        for d in dicts_to_write:
-            json_string = json.dumps(d)
-            file.write(json_string + '\n')
+
+    serves.save(analysis_dir_path)
+    receptions.save(analysis_dir_path)
+    sets_c1.save(analysis_dir_path)
+    sets_c2.save(analysis_dir_path)
+    hits.save(analysis_dir_path)
+    
 
 if __name__ == '__main__': 
 
