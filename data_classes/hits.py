@@ -19,16 +19,19 @@ class Hits():
 
         self.hits[player] = {}
 
+
     def add_position_to_player(self, player: int, position: int):
 
         self.hits[player][position] = {
             set_type: {hitting_zone: {hitting_outcome: 0 
-            for hitting_outcome in range(1, 5)} 
-            for hitting_zone in range(1, 6)} 
-            for set_type in range(1, 5)
+                for hitting_outcome in range(1, 5)} 
+                for hitting_zone in range(1, 6)} 
+                for set_type in range(1, 5)
         }
 
-    def add_hit_to_player(self, player: int, hitting_position: int, hitting_zone: int, hitting_outcome: int):
+
+    def add_hit_to_player(self, player: int, hitting_position: int,set_type: int, hitting_zone: int,
+                            hitting_outcome: int):
 
         if not player in self.hits:
             self.add_player(player)
@@ -36,7 +39,7 @@ class Hits():
         if not hitting_position in self.hits[player]:
             self.add_position_to_player(player, hitting_position)
 
-        self.hits[player][hitting_position][hitting_zone][hitting_outcome] += 1
+        self.hits[player][hitting_position][set_type][hitting_zone][hitting_outcome] += 1
 
     
 
@@ -46,5 +49,5 @@ class Hits():
         import json
         import os
         
-        with open(os.path.join(filepath, 'hits'), 'w', encoding='utf-8') as outfile:
+        with open(os.path.join(filepath, 'hits.json'), 'w', encoding='utf-8') as outfile:
             outfile.write(json.dumps(self.hits, indent=4))

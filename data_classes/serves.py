@@ -26,5 +26,5 @@ class Serves():
         import json
         import os
         
-        with open(os.path.join(filepath, 'serves'), 'w', encoding='utf-8') as outfile:
+        with open(os.path.join(filepath, 'serves.json'), 'w', encoding='utf-8') as outfile:
             outfile.write(json.dumps(self.serves, indent=4))

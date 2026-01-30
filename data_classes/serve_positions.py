@@ -21,7 +21,9 @@ class ServePositions():
         """e.g. '>  20 3  7 3  10 2  24 5  4 2  14 2'
         """
 
-        positions = data[0].split('  ')[1:]
+        print(data)
+
+        positions = data.split('  ')[1:]
         for position in positions:
             player, position = tuple(map(int, position.split(' ')))
 
@@ -34,5 +36,5 @@ class ServePositions():
         import json
         import os
 
-        with open(os.path.join(filepath, 'serve_positions.txt'), 'w', encoding='utf-8') as outfile:
+        with open(os.path.join(filepath, 'serve_positions.json'), 'w', encoding='utf-8') as outfile:
             outfile.write(json.dumps(self.serve_positions, indent=4))

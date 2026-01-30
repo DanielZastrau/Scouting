@@ -1,9 +1,11 @@
 # Notation for scouting
 * the > denotes the line detailing the positions from which each player serves
   * 1 denotes the left sideline, 5 the right, 2-4 align in between
+  *     >20 3  7 3  10 2  24 5  4 2  14 2
 
 * the >> denotes the types of serves the players do
   * s for spin,  f for float,  h for hybrid
+  *     >>20 s  7 s  10 s  24 f  4 f  14 s
 
 * each line represents a set
 
@@ -91,6 +93,6 @@
 
 * attack outcome 1 - 5
   * 1  point
-  * 2  defended
+  * 2  defended (includes a defense which comes straight back over the net and a rebound off the block)
   * 3  blocked
   * 4  error

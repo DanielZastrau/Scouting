@@ -28,7 +28,7 @@ class Lineup():
 
         the court positions are 2, 3, 4 in that order
         """
-        return [self.lineup[1:4], self.meta[1:4]]
+        return self.lineup[1:4], self.meta[1:4]
 
 
     def get_backcourt(self) -> tuple[list]:
@@ -39,7 +39,13 @@ class Lineup():
 
         the court positions are 1, 5, 6 in that order
         """
-        return [self.lineup[0]].extend(self.lineup[4:], [self.meta[0]].extend(self.meta[4:]))
+        backcourt_players = [self.lineup[0]]
+        backcourt_players.extend(self.lineup[4:])
+
+        backcourt_meta = [self.meta[0]]
+        backcourt_meta.extend(self.meta[4:])
+
+        return backcourt_players, backcourt_meta
 
 
     def get_rotation(self) -> int:
@@ -76,6 +82,8 @@ class Lineup():
             empyt_position = [key_ for key_ in receiving_positions if receiving_positions[key_] == 0][0]
             receiving_positions[empyt_position] = backcourt_players[backcourt_meta.index('OH')]
 
+        return receiving_positions
+
 
     def get_receiving_player_on_position(self, position: int) -> int:
 
@@ -102,7 +110,10 @@ class Lineup():
             if rotation == 0:
                 return frontcourt_players[frontcourt_meta.index('OH')]
             else:
-                return frontcourt_players[frontcourt_meta.index('OP')]
+                try:
+                    return frontcourt_players[frontcourt_meta.index('OP')]
+                except ValueError:
+                    raise Exception('Faulty scouting')
 
         # middle was set
         if position == 3:
@@ -123,6 +134,7 @@ class Lineup():
 
 
     def get_server(self) -> int:
+
         return self.lineup[0]
 
 
@@ -149,11 +161,11 @@ class Lineup():
         setter_index = self.lineup.index(self.setter)
 
         self.meta[setter_index] = 'S'
-        self.meta[(setter_index + 3) % 6] = 'O'
+        self.meta[(setter_index + 3) % 6] = 'OP'
         self.meta[(setter_index + 1) % 6] = 'OH'
         self.meta[(setter_index + 4) % 6] = 'OH'
-        self.meta[(setter_index + 2) % 6] = 'M'
-        self.meta[(setter_index + 5) % 6] = 'M'
+        self.meta[(setter_index + 2) % 6] = 'MI'
+        self.meta[(setter_index + 5) % 6] = 'MI'
 
 
     def modify_lineup(self, substitution: str):
@@ -162,6 +174,7 @@ class Lineup():
         relevant = substitution[1:-1]
         player_out, player_in = list(map(int, relevant.split('-')))
 
+        # libero is special case
         if player_out == self.libero:
             self.modify_libero(player_in)
 
@@ -171,11 +184,13 @@ class Lineup():
 
             self.lineup[self.lineup.index(player_out)] = player_in
 
+            if player_out == self.setter:
+                self.setter = player_in
 
     def modify_libero(self, player_in):
         self.libero = player_in
 
 
     def rotate_lineup(self):
-        self.lineup = self.lineup[1:].extend([self.lineup[0]])
-        self.meta = self.meta[1:].extend([self.meta[0]])
+        self.lineup = self.lineup[1:] + [self.lineup[0]]
+        self.meta = self.meta[1:] + [self.meta[0]]

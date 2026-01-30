@@ -1,16 +1,13 @@
 import argparse
 import json
-from typing import Dict, List, Any
+import os
 
-# ReportLab Imports
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 
-# Define type hints
-OuterDict1 = Dict[int, Dict[int, int]]
 
 def calculate_stats(zones: dict) -> dict:
     """
@@ -19,23 +16,23 @@ def calculate_stats(zones: dict) -> dict:
     stats = {
         'total_serves': 0, 'aces': 0, 'errors': 0, 'zone_breakdown': {}
     }
-    for i in range(9):
+    for i in range(1, 10):
         stats['zone_breakdown'][str(i)] = {'total': 0, 'detail': ''}
 
     for zone, outcomes in zones.items():
         zone_total = sum(outcomes.values())
+
         stats['total_serves'] += zone_total
         stats['aces'] += outcomes.get('1', 0)
-        
-        if zone == '0':
-            stats['errors'] += zone_total
-        else:
-            stats['errors'] += outcomes.get('4', 0)
+        stats['errors'] += outcomes.get('4', 0)
 
         if zone in stats['zone_breakdown']:
+
             stats['zone_breakdown'][zone]['total'] = zone_total
+
             aces = outcomes.get('1', 0)
-            errs = outcomes.get('4', 0) if zone != '0' else zone_total
+            errs = outcomes.get('4', 0)
+
             # Removed 'Total' suffix to save space, format is T/A/E
             stats['zone_breakdown'][zone]['raw_aces'] = aces # Store for comparison
             stats['zone_breakdown'][zone]['detail'] = f"{zone_total}Total/{aces}Aces/{errs}Errors"
@@ -45,7 +42,7 @@ def calculate_stats(zones: dict) -> dict:
 def get_legend_table():
     """Returns the Legend as a formatted Table element."""
     data = [
-        ["ZONE KEY (0-8)"],
+        ["ZONE KEY (1-9) when looking towards the net"],
         ["0: Frontcourt Left Half  | 1: Left Sideline   | 2: on Pos 5             "],
         ["3: Gap 5-6               | 4: Pos 6           | 5: Gap 6-1              "],
         ["6: on Pos 1              | 7: Right Sideline  | 8: Frontcourt Right Half"],
@@ -210,21 +207,14 @@ if __name__ == "__main__":
     parser.add_argument('--filename', required=True)
     args = parser.parse_args()
 
-    loaded_dicts = []
-    try:
-        with open(args.filename, 'r') as f:
-            for line in f:
-                if line.strip():
-                    loaded_dicts.append(json.loads(line.strip()))
-        
-        if len(loaded_dicts) < 5:
-            print("Error: Input file must contain at least 5 JSON lines.")
-        else:
-            serves_data = loaded_dicts[2]
-            if serves_data:
-                generate_pdf_report(serves_data, output_filename='serves_report.pdf')
-            else:
-                print("Warning: 'serves' dictionary is empty.")
+    # this all assumes, that the script is executed from within the generators folder
 
-    except Exception as e:
-        print(f"Error processing file: {e}")
+    with open(os.path.join(os.getcwd(), '..', 'analysis', args.filename, 'serves.json'), 'r') as f:
+        serves_data = json.load(f)
+
+    # make sure the output dir exists
+    if not os.path.isdir(os.path.join(os.getcwd(), '..', 'reports', args.filename)):
+        os.mkdir(os.path.join(os.getcwd(), '..', 'reports', args.filename))
+
+    # generate report
+    generate_pdf_report(serves_data, output_filename=f'../reports/{args.filename}/serves_report.pdf')

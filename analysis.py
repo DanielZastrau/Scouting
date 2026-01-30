@@ -64,7 +64,10 @@ def main(filename: str):
     for i, line in enumerate(data):
         print(f'set: {i + 1}')
 
-        lineup_, actions = line.split('>')
+
+        # index gives back the first occurrence
+        first_occurence = line.index('>')
+        lineup_, actions = line[:first_occurence], line[first_occurence + 1:]
 
 
         # Determine lineup
@@ -86,6 +89,7 @@ def main(filename: str):
         # breaks become empty strings ''
         actions = actions.split(' ')
         for ii, action in enumerate(actions):
+            print(f'action {ii}  --  {action}')
 
 
             if action == '':
@@ -213,6 +217,9 @@ def main(filename: str):
 
                 mode = 'looking for set destination next'
             
+                if len(action) == 4:
+                    complex = 2    # potentially if the ball comes back
+
                 # if it was an ace,  then the next action is an empty string
                 # if it came back over the next,  then the next action of the team being scouted
                 #     is technically a defense,  which is not being taken into account,
@@ -278,6 +285,8 @@ def main(filename: str):
                 # ..  --  defended  --  that includes a defense which comes straight back over and rebound off the block
                 elif action == '..':
                     mode = 'looking for set destination next'
+
+                    complex = 2    # potential return of ball
 
                 # ...  --  blocked
                 elif action == '...':

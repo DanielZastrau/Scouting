@@ -36,5 +36,5 @@ class Sets():
         import json
         import os
         
-        with open(os.path.join(filepath, f'setsK{self.complex}'), 'w', encoding='utf-8') as outfile:
+        with open(os.path.join(filepath, f'setsK{self.complex}.json'), 'w', encoding='utf-8') as outfile:
             outfile.write(json.dumps(self.sets, indent=4))

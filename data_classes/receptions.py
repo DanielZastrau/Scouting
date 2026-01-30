@@ -9,7 +9,11 @@ class Receptions():
 
     def add_player(self, player: int):
 
-        self.receptions[player] = {type_: {outcome: 0 for outcome in range(1, 5)} for type_ in ['F', 'J', 'H']}
+        self.receptions[player] = {
+            type_: {outcome: 0 
+                for outcome in range(1, 5)} 
+                for type_ in range(1, 4)
+        }
 
 
     def add_reception_to_player(self, player, type_, outcome):
@@ -26,5 +30,5 @@ class Receptions():
         import json
         import os
         
-        with open(os.path.join(filepath, 'reception'), 'w', encoding='utf-8') as outfile:
+        with open(os.path.join(filepath, 'reception.json'), 'w', encoding='utf-8') as outfile:
             outfile.write(json.dumps(self.receptions, indent=4))
