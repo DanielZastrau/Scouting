@@ -25,6 +25,7 @@
     *     <x-y>  <a-b>  <->
 
 * a serve
+  * is followed by a serve type
   * is followed by a serve zone
   * is followed by a serve outcome
   * is followed by either a break (ace or error) or a set destination (ball was returned [either overpass or by attack])
@@ -41,6 +42,10 @@
   * is followed by an attack zone
   * is followed by an attack outcome
   * is followed by either a break (point or error) or a set destination (ball was returned (either by rebounding it off the block or by attack))
+
+* serve type 1 - 2
+  * 1  float
+  * 2  jump
 
 * serve zone 1 - 9
   * zone 1 is front court left half

@@ -106,7 +106,11 @@ class Lineup():
         backcourt_players, backcourt_meta = self.get_backcourt()
 
         if position == 1:
-            return backcourt_players[backcourt_meta.index('OP')]
+            try:
+                return backcourt_players[backcourt_meta.index('OP')]
+            except ValueError:
+                print(f'\\033[31m Faulty scouting there is no opposite in the back row, current lineup: {self.lineup}. Will assume opposite in the front row')
+                return frontcourt_players[frontcourt_meta.index('OP')]
 
         if position == 2:
             if rotation == 0:
@@ -115,7 +119,8 @@ class Lineup():
                 try:
                     return frontcourt_players[frontcourt_meta.index('OP')]
                 except ValueError:
-                    raise Exception('Faulty scouting')
+                    print(f'\\033[31m Faulty scouting there is no opposite in the front row, current lineup: {self.lineup}. Will assume opposite in the back row')
+                    return frontcourt_players[frontcourt_meta.index('OP')]
 
         # middle was set
         if position == 3:

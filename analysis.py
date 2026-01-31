@@ -4,7 +4,6 @@ import json
 
 from data_classes.lineup import Lineup
 
-from data_classes.serve_positions import ServePositions
 from data_classes.serve_types import ServeTypes
 from data_classes.serves import Serves
 
@@ -32,15 +31,9 @@ def main(filename: str):
     data = [line for line in data if (not line.startswith('#')) and (len(line) != 0)]
 
 
-    # read out serve positions
-    serve_positions = ServePositions()
-    serve_positions.extract_serve_positions(data[0])
-    serve_positions.save(analysis_dir_path)
-
-
     # read out serve type
     serve_types = ServeTypes()
-    serve_types.extract_serve_types(data[1])
+    serve_types.extract_serve_types(data[0])
     serve_types.save(analysis_dir_path)
 
 
@@ -177,10 +170,10 @@ def main(filename: str):
             #--------------------------------------------------------------------------------------
 
 
-            # . float, .. jumper, ... hybrid
+            # . float, .. jumper
             elif mode == 'looking for reception type next':
 
-                assert 1 <= len(action) <= 3, f'ERR: action {action} not eligible. Only 3 reception types are defined'
+                assert 1 <= len(action) <= 2, f'ERR: action {action} not eligible. Only 2 reception types are defined'
 
                 mode = 'looking for receiving position next'
 

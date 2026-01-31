@@ -12,7 +12,7 @@ class Receptions():
         self.receptions[player] = {
             type_: {outcome: 0 
                 for outcome in range(1, 5)} 
-                for type_ in range(1, 4)
+                for type_ in range(1, 3)
         }
 
 
