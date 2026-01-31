@@ -19,15 +19,15 @@ class Sets():
 
     def add_player(self, player: int):
 
-        self.sets[player] = {set_destination: {set_type: 0 for set_type in range(1, 5)} for set_destination in range(1, 8)}
+        self.sets[player] = {rotation: {set_destination: {set_type: 0 for set_type in range(1, 5)} for set_destination in range(1, 8)} for rotation in range(6)}
 
 
-    def add_set_to_player(self, player: int, set_destination: int, set_type: int):
+    def add_set_to_player(self, player: int, rotation: int, set_destination: int, set_type: int):
 
         if not player in self.sets:
             self.add_player(player)
 
-        self.sets[player][set_destination][set_type] += 1
+        self.sets[player][rotation][set_destination][set_type] += 1
 
 
     # Save

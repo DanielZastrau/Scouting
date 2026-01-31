@@ -2,7 +2,10 @@
 *.pdf
 *.log
 *.txt
+*.json
 venv/
 __pycache__/
 
 ToDo.md
+
+!scouting/*

@@ -30,5 +30,5 @@ class Receptions():
         import json
         import os
         
-        with open(os.path.join(filepath, 'reception.json'), 'w', encoding='utf-8') as outfile:
+        with open(os.path.join(filepath, 'receptions.json'), 'w', encoding='utf-8') as outfile:
             outfile.write(json.dumps(self.receptions, indent=4))

@@ -19,11 +19,7 @@ from data_classes.hits import Hits
 
 def main(filename: str):
 
-    analysis_dir_path = os.path.join(os.getcwd(), 'analysis', filename)
-
-    # create a folder for the analysis files
-    if not os.path.isdir(analysis_dir_path):
-        os.mkdir(analysis_dir_path)
+    analysis_dir_path = os.path.join(os.getcwd(), 'analysis')
 
 
     # get the scouting file    
@@ -99,6 +95,7 @@ def main(filename: str):
             # indicates a substituion
             elif action.startswith('<'):
                 lineup.modify_lineup(substitution=action)
+
 
             # then it should only find . or ..
             # also the only mode in which the team mode can change and therefore the rotation
@@ -201,6 +198,7 @@ def main(filename: str):
 
                 elif 1 <= len(action) <= 6:
                     receptions_position = len(action)
+
                     receptions_player = lineup.get_receiving_player_on_position(receptions_position)
 
                     mode = 'looking for reception outcome next'
@@ -247,11 +245,12 @@ def main(filename: str):
                 assert 1 <= len(action) <= 4, f'ERR: action {action} not eligible. Only 4 set types are defined.'
 
                 sets_type = len(action)
+                rotation = lineup.get_rotation()
 
                 if complex == 1:
-                    sets_c1.add_set_to_player(lineup.setter, sets_destination, sets_type)
+                    sets_c1.add_set_to_player(lineup.setter, rotation, sets_destination, sets_type)
                 elif complex == 2:
-                    sets_c2.add_set_to_player(lineup.setter, sets_destination, sets_type)
+                    sets_c2.add_set_to_player(lineup.setter, rotation, sets_destination, sets_type)
 
                 mode = 'looking for zone of hit next'
 

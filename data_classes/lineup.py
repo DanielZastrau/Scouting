@@ -66,11 +66,6 @@ class Lineup():
         # determine position 3 receiver  --  always the frontcourt middle
         receiving_positions[3] = frontcourt_players[frontcourt_meta.index('MI')]
 
-        # determine where the libero receives
-        translation = {0: 1, 1: 5, 2: 6}
-        libero_position = translation[backcourt_meta.index('MI')]
-        receiving_positions[libero_position] = self.libero
-
         # determine position 5 receiver  --  always an OH
         if rotation == 0:
             receiving_positions[5] = backcourt_players[backcourt_meta.index('OH')]
@@ -78,9 +73,16 @@ class Lineup():
         else:
             receiving_positions[5] = frontcourt_players[frontcourt_meta.index('OH')]
             
-            # find empty slot
-            empyt_position = [key_ for key_ in receiving_positions if receiving_positions[key_] == 0][0]
-            receiving_positions[empyt_position] = backcourt_players[backcourt_meta.index('OH')]
+            # if the backcourt OH is on position 1 he receives there, 
+            # else he receives on 6
+            player = backcourt_players[backcourt_meta.index('OH')]
+            if self.lineup.index(player) == 0:
+                receiving_positions[1] = player
+            else:
+                receiving_positions[6] = player
+
+        empty_key = [key for key in receiving_positions if receiving_positions[key] == 0][0]
+        receiving_positions[empty_key] = self.libero
 
         return receiving_positions
 
@@ -170,22 +172,40 @@ class Lineup():
 
     def modify_lineup(self, substitution: str):
         """e.g. <12-13>
-        """
-        relevant = substitution[1:-1]
-        player_out, player_in = list(map(int, relevant.split('-')))
 
-        # libero is special case
-        if player_out == self.libero:
-            self.modify_libero(player_in)
+        if it is a diagonal substituion it would look like this
+        e.g.  <x-y>  <a-b>  <->
+        """
+
+        # detect diagonal substitution
+        if substitution == '<->':
+            
+            # then the substitutions already happened, I only need to change the setter value and the meta
+            opposite_index = self.meta.index('OP')
+            setter_index = self.meta.index('S')
+
+            self.meta[opposite_index] = 'S'
+            self.meta[setter_index] = 'OP'
+
+            self.setter = self.lineup[opposite_index]
 
         else:
-            assert player_out in self.lineup, \
-                f'player {player_out} is not in the current lineup {self.lineup}'
+            relevant = substitution[1:-1]
+            player_out, player_in = list(map(int, relevant.split('-')))
 
-            self.lineup[self.lineup.index(player_out)] = player_in
+            # libero is special case
+            if player_out == self.libero:
+                self.modify_libero(player_in)
 
-            if player_out == self.setter:
-                self.setter = player_in
+            else:
+                assert player_out in self.lineup, \
+                    f'player {player_out} is not in the current lineup {self.lineup}'
+
+                self.lineup[self.lineup.index(player_out)] = player_in
+
+                if player_out == self.setter:
+                    self.setter = player_in
+
 
     def modify_libero(self, player_in):
         self.libero = player_in

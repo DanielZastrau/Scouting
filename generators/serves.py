@@ -8,6 +8,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 
+translation = {'f': 'Float',  's': 'Jumper',  'h': 'Hybrid'}
+
 
 def calculate_stats(zones: dict) -> dict:
     """
@@ -66,7 +68,8 @@ def get_legend_table():
     t.setStyle(style)
     return t
 
-def generate_pdf_report(serves: OuterDict1, output_filename: str):
+def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
+
     doc = SimpleDocTemplate(
         output_filename, 
         pagesize=A4,
@@ -117,6 +120,8 @@ def generate_pdf_report(serves: OuterDict1, output_filename: str):
     row_idx = 1 
 
     for player_num in sorted_players:
+        already_added_serve_type = False 
+
         p_stats = calculate_stats(serves[player_num])
         
         # --- Identify Max Zones ---
@@ -126,31 +131,32 @@ def generate_pdf_report(serves: OuterDict1, output_filename: str):
         max_serve_zone = None
 
         for z, data in p_stats['zone_breakdown'].items():
+
             # Check Max Aces
             if data.get('raw_aces', 0) > max_aces:
                 max_aces = data.get('raw_aces', 0)
                 max_ace_zone = z
+            
             # Check Max Serves
             if data['total'] > max_serves:
                 max_serves = data['total']
                 max_serve_zone = z
                 
         # Handle cases where counts are 0 (optional: don't highlight if 0)
-        if max_aces == 0: max_ace_zone = None
-        if max_serves == 0: max_serve_zone = None
+        if max_aces == 0:
+            max_ace_zone = None
+        
+        if max_serves == 0:
+            max_serve_zone = None
 
         # 1. Summary Row
-        summary_row = [
-            f"#{player_num}", 
-            p_stats['total_serves'], 
-            p_stats['aces'], 
-            p_stats['errors'], 
-            "" 
-        ]
+        summary_row = [f"#{player_num}",  p_stats['total_serves'],  p_stats['aces'],  p_stats['errors'],  "" ]
+
         current_table_data.append(summary_row)
         current_table_style.append(('FONTBOLD', (0, row_idx), (0, row_idx), True))
         row_idx += 1
         
+
         # 2. Detail Row(s)
         active_zones = [z for z, data in p_stats['zone_breakdown'].items()]
         
@@ -185,7 +191,15 @@ def generate_pdf_report(serves: OuterDict1, output_filename: str):
                 # Wrap in Paragraph to render the XML tags
                 para = Paragraph(row_xml, table_para_style)
                 
-                current_table_data.append(["", "", "", "", para])
+                if already_added_serve_type:
+                    first_elem = ''
+                else:
+                    print(serve_types)
+                    print(str(player_num))
+                    first_elem = translation[serve_types[str(player_num)]]
+                    already_added_serve_type = True
+
+                current_table_data.append([first_elem, "", "", "", para])
                 
                 # Note: We do NOT append TEXTCOLOR style here, as the Paragraph handles it internally.
                 row_idx += 1
@@ -203,18 +217,17 @@ def generate_pdf_report(serves: OuterDict1, output_filename: str):
     print(f"PDF Report saved to {output_filename}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--filename', required=True)
-    args = parser.parse_args()
 
-    # this all assumes, that the script is executed from within the generators folder
+    # Determine paths
+    input_path_1 = os.path.join('.', 'analysis', 'serves.json')
+    input_path_2 = os.path.join('.', 'analysis', 'serve_types.json')
+    output_path = os.path.join('.', 'reports', 'serves_report.pdf')
 
-    with open(os.path.join(os.getcwd(), '..', 'analysis', args.filename, 'serves.json'), 'r') as f:
-        serves_data = json.load(f)
+    with open(input_path_1, 'r', encoding='utf-8') as file:
+        serves_data = json.load(file)
 
-    # make sure the output dir exists
-    if not os.path.isdir(os.path.join(os.getcwd(), '..', 'reports', args.filename)):
-        os.mkdir(os.path.join(os.getcwd(), '..', 'reports', args.filename))
+    with open(input_path_2, 'r', encoding='utf-8') as file:
+        serve_types = json.load(file)
 
     # generate report
-    generate_pdf_report(serves_data, output_filename=f'../reports/{args.filename}/serves_report.pdf')
+    generate_pdf_report(serves_data, serve_types, output_filename=output_path)

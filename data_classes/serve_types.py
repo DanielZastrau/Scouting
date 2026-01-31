@@ -21,7 +21,9 @@ class ServeTypes():
         """e.g. '>>20 s  7 f  10 h  24 s  4 s  14 f'
         """
 
-        types = data.split('  ')[2:]
+        print(data)
+        types = data[2:].split('  ')
+        print(types)
         for tuple_ in types:
             player, type_ = tuple_.split(' ')
 

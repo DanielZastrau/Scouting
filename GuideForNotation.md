@@ -20,7 +20,9 @@
 
 * a player substitution is denoted as follows and has to be preceded by a break and followed by one
   *     <x-y>
-  * the player with number x is swapped out for the player with number y 
+  * the player with number x is swapped out for the player with number y
+  * if it is a diagonal substitution, then it is denoted with an extra bracket
+    *     <x-y>  <a-b>  <->
 
 * a serve
   * is followed by a serve zone
