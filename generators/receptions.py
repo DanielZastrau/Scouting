@@ -8,48 +8,48 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
-def calculate_reception_stats(player_serves: dict) -> dict:
+
+def calculate_reception_stats(player_serves: dict, serve_type: str) -> dict:
     """
     Aggregates reception stats per serve type (Float/Jump) and a grand total.
+    1 for float, 2 for jumper
     """
-    summary = {}
-    # We now only have type '1' (Float) and '2' (Jump), plus 'All'.
-    # Note: '3' (Hybrid) is removed.
-    for key in ['1', '2', 'All']:
-        summary[key] = {'total': 0, 'perfect': 0, 'okay': 0, 'bad': 0, 'error': 0}
+    summary = {
+        'total': 0,
+        'perfect': 0,
+        'okay': 0,
+        'bad': 0,
+        'error': 0,
+    }
 
-    for serve_type, outcomes in player_serves.items():
-        # Ensure we only process valid types (1 and 2)
-        # JSON keys are strings, so we check for '1' and '2'.
-        if serve_type not in ['1', '2']:
+    translation = {'1': 'float', '2': 'jumper'}
+
+    for serve, outcomes in player_serves.items():
+
+        if translation[serve] != serve_type.lower():
             continue
 
         # Outcome keys in JSON are strings '1' through '4'
-        p = outcomes.get('1', 0)
-        o = outcomes.get('2', 0)
-        b = outcomes.get('3', 0)
-        e = outcomes.get('4', 0)
-        total = p + o + b + e
+        perfect = outcomes.get('1', 0)
+        okay = outcomes.get('2', 0)
+        bad = outcomes.get('3', 0)
+        error = outcomes.get('4', 0)
+        total = perfect + okay + bad + error
 
-        # Add to specific serve type stats
-        summary[serve_type]['perfect'] += p
-        summary[serve_type]['okay'] += o
-        summary[serve_type]['bad'] += b
-        summary[serve_type]['error'] += e
-        summary[serve_type]['total'] += total
-
-        # Add to Grand Total ('All')
-        summary['All']['perfect'] += p
-        summary['All']['okay'] += o
-        summary['All']['bad'] += b
-        summary['All']['error'] += e
-        summary['All']['total'] += total
+        # Turn to percentages and add to summary
+        if not total == 0:
+            summary['perfect'] += perfect / total * 100
+            summary['okay'] += okay / total * 100
+            summary['bad'] += bad / total * 100
+            summary['error'] += error / total * 100
+            summary['total'] += total
 
     return summary
 
-def generate_reception_pdf(data: dict, output_filename: str):
-    os.makedirs(os.path.dirname(output_filename), exist_ok=True)
 
+def generate_reception_pdf(receptions: dict, output_filename: str):
+
+    # Define the doc
     doc = SimpleDocTemplate(
         output_filename,
         pagesize=A4,
@@ -60,7 +60,8 @@ def generate_reception_pdf(data: dict, output_filename: str):
     elements = []
     styles = getSampleStyleSheet()
 
-    # --- Title ---
+
+    # title
     title_style = ParagraphStyle(
         'ReportTitle',
         parent=styles['Heading1'],
@@ -71,84 +72,71 @@ def generate_reception_pdf(data: dict, output_filename: str):
     elements.append(Paragraph("Reception Report (By Serve Type)", title_style))
     elements.append(Spacer(1, 0.5*cm))
 
-    # --- Table Setup ---
-    headers = [
-        "Player", 
-        "Type", 
-        "Tot", 
-        "Perf", 
-        "Okay", 
-        "Bad", 
-        "Err"
-    ]
-    table_data = [headers]
 
-    # Initialize styling with Header styles
-    table_style_cmds = [
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('TOPPADDING', (0, 0), (-1, 0), 8),
-        # Grid for Header only
-        ('GRID', (0, 0), (-1, 0), 0.5, colors.grey),
-    ]
+    for serve_type in ['Float', 'Jumper']:
 
-    # Sort players numerically
-    sorted_player_keys = sorted(data.keys(), key=lambda x: int(x))
+        # Subtitle per serve type
+        subtitle_style = ParagraphStyle(        
+            'Subtitle',
+            parent=styles['Heading2'],
+            alignment=1, # Center
+            fontSize=12,
+            spaceAfter=12
+        )
+        elements.append(Paragraph(f'Serve Type: {serve_type}', subtitle_style))
+        elements.append(Spacer(1, 0.5*cm))
 
-    row_idx = 1 # Start after header
 
-    for player_num in sorted_player_keys:
-        stats = calculate_reception_stats(data[player_num])
-        
-        # Row 1: Float (Type 1)
-        s1 = stats['1']
-        row_float = [f"#{player_num}", "Float", s1['total'], s1['perfect'], s1['okay'], s1['bad'], s1['error']]
-        
-        # Row 2: Jump (Type 2)
-        s2 = stats['2']
-        row_jump = ["", "Jump", s2['total'], s2['perfect'], s2['okay'], s2['bad'], s2['error']]
-        
-        # Row 3: Total Summary
-        st = stats['All']
-        row_tot = ["", "TOTAL", st['total'], st['perfect'], st['okay'], st['bad'], st['error']]
+        # --- Table Setup ---
+        headers = ["Player", "Tot", "Perf%", "Okay%", "Bad%", "Err%"]
+        col_widths = [2.5*cm, 2.5*cm, 2.0*cm, 2.0*cm, 2.0*cm, 2.0*cm]
 
-        # Row 4: Whitespace (Empty row)
-        row_space = [""] * 7
+        table_data = [headers]
 
-        # Add all rows to data (3 data rows + 1 spacer)
-        table_data.extend([row_float, row_jump, row_tot, row_space])
 
-        # --- Styling for this player block ---
-        
-        # 1. Grid: Apply to the 3 data rows (Float, Jump, Total)
-        #    rows: row_idx to row_idx + 2
-        table_style_cmds.append(('GRID', (0, row_idx), (-1, row_idx + 2), 0.5, colors.grey))
+        # Initialize styling with Header styles
+        table_style_cmds = [
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
+            # Grid for Header only
+            ('GRID', (0, 0), (-1, 0), 0.5, colors.grey),
+        ]
 
-        # 2. Span Player Name across the 3 data rows
-        table_style_cmds.append(('SPAN', (0, row_idx), (0, row_idx + 2)))
-        
-        # 3. Total Row Highlights (Bold + Grey Background)
-        #    The Total row is at index: row_idx + 2
-        table_style_cmds.append(('FONTBOLD', (1, row_idx + 2), (-1, row_idx + 2), True))
-        table_style_cmds.append(('BACKGROUND', (1, row_idx + 2), (-1, row_idx + 2), colors.whitesmoke))
-        
-        # 4. Thick Separator Line at the bottom of the DATA block (above the spacer)
-        table_style_cmds.append(('LINEBELOW', (0, row_idx + 2), (-1, row_idx + 2), 1.5, colors.black))
 
-        # Advance index by 4 (3 data rows + 1 spacer row)
-        row_idx += 4
+        # Sort players numerically
+        sorted_player_keys = sorted(receptions.keys(), key=lambda x: int(x))
+        row_idx = 1 # Start after header
 
-    # --- Build Table ---
-    col_widths = [2.5*cm, 2.5*cm, 1.5*cm, 2.0*cm, 2.0*cm, 2.0*cm, 2.0*cm]
-    t = Table(table_data, colWidths=col_widths)
-    t.setStyle(TableStyle(table_style_cmds))
 
-    elements.append(t)
+        for player_num in sorted_player_keys:
+
+            stats = calculate_reception_stats(receptions[player_num], serve_type=serve_type)
+            
+
+            datarow = [
+                f"#{player_num}",
+                str(int(stats['total'])),
+                f"{stats['perfect']:.0f}",
+                f"{stats['okay']:.0f}",
+                f"{stats['bad']:.0f}",
+                f"{stats['error']:.0f}",
+            ]
+
+            table_data.append(datarow)
+
+        # --- Build Table ---
+        t = Table(table_data, colWidths=col_widths)
+        t.setStyle(TableStyle(table_style_cmds))
+
+        elements.append(t)
+
+        elements.append(Spacer(1, 1*cm))
 
     # Build the PDF
     doc.build(elements)
