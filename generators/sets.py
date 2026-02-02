@@ -15,7 +15,7 @@ def aggregate_counts(set_type_data):
     """
     return sum(set_type_data.values())
 
-def create_setter_report(data, output_filename: str, complex_name: str):
+def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
 
     doc = SimpleDocTemplate(
         output_filename,
@@ -37,42 +37,82 @@ def create_setter_report(data, output_filename: str, complex_name: str):
     )
 
     # Sort players numerically
-    player_ids = sorted(data.keys(), key=lambda x: int(x))
+    player_ids = sorted(data_k1.keys(), key=lambda x: int(x))
 
     for player_id in player_ids:
-        player_data = data[player_id]
+        player_data_k1 = data_k1[player_id]
+        player_data_k2 = data_k2[player_id]
 
-        # 1. Add Player Title
-        elements.append(Paragraph(f"Setter Distribution: Player #{player_id}  --  Complex {complex_name}", title_style))
+
+        # Add Player Title
+        elements.append(Paragraph(f"Setter Distribution: Player #{player_id}", title_style))
         elements.append(Spacer(1, 0.5*cm))
 
-        # 2. Prepare Main Table Data
+
         # Header Row
-        main_table_data = [[
-            "Rotation", 
-            "Position Distribution\ntop row 1-6-5", 
-            "Setter\nDump",
-            "Total\nSets"
-        ]]
+        main_table_data = [["Rotation", "K1 in %", "Total\nSets", "K2 in %", "Total\nSets"]]
+        col_widths = [1.5*cm, 6.0*cm, 2.0*cm, 6.0*cm, 2.0*cm]
+
+
+        # Add example row detailing the positions
+        grid_data = [
+            [1, 6, 5], # Top Row
+            [2, 3, 4]  # Bottom Row
+        ]
+        val_map = [
+            (1, 0, 0), (6, 1, 0), (5, 2, 0),
+            (2, 0, 1), (3, 1, 1), (4, 2, 1)
+        ]
+
+
+        # Create the Nested Table Object
+        nested_styles = [
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke) # Default background
+        ]
+
+        nested_t = Table(grid_data, colWidths=[1.2*cm]*3, rowHeights=[0.8*cm]*2)
+        nested_t.setStyle(TableStyle(nested_styles))
+
+
+        # Add Row to Main Table
+        main_table_data.append([f"Rot -", nested_t, '-', '-', '-'])
+
 
         # Sort rotations numerically (0, 1, 2...)
-        rotations = sorted(player_data.keys(), key=lambda x: int(x))
+        rotations = sorted(player_data_k1.keys(), key=lambda x: int(x))
 
         for rot in rotations:
-            destinations = player_data[rot]
+            destinations_k1 = player_data_k1[rot]
+            destinations_k2 = player_data_k2[rot]
             
             # Helper to safely get counts
-            def get_cnt(p):
+            def get_count(p, data):
                 key = str(p)
-                return aggregate_counts(destinations[key]) if key in destinations else 0
+                return aggregate_counts(data[key]) if key in data else 0
 
-            # --- Construct the Nested Grid (2x3) ---
-            p1, p6, p5 = get_cnt(1), get_cnt(6), get_cnt(5)
-            p2, p3, p4 = get_cnt(2), get_cnt(3), get_cnt(4)
+
+
+            # Construct the Nested Grid for K1
+            p1, p6, p5 = get_count(1, destinations_k1), get_count(6, destinations_k1), get_count(5, destinations_k1)
+            p2, p3, p4 = get_count(2, destinations_k1), get_count(3, destinations_k1), get_count(4, destinations_k1)
             
+            total_count_k1 = p1 + p6 + p5 + p2 + p3 + p4
+
+            ps = [p1, p2, p3, p4, p5, p6]
+
+            # Convert to percentages
+            if total_count_k1 != 0:
+                ps = list(map(lambda x: x / total_count_k1 * 100, ps))
+                p1, p2, p3, p4, p5, p6 = ps
+
             grid_data = [
-                [p1, p6, p5], # Top Row
-                [p2, p3, p4]  # Bottom Row
+                [f'{p1:.0f}', f'{p6:.0f}', f'{p5:.0f}'], # Top Row
+                [f'{p2:.0f}', f'{p3:.0f}', f'{p4:.0f}']  # Bottom Row
             ]
 
             # --- Logic to Highlight Max Value ---
@@ -105,20 +145,71 @@ def create_setter_report(data, output_filename: str, complex_name: str):
                         nested_styles.append(('BACKGROUND', (col, row), (col, row), colors.yellow))
 
             # Create the Nested Table Object
-            nested_t = Table(grid_data, colWidths=[1.2*cm]*3, rowHeights=[0.8*cm]*2)
-            nested_t.setStyle(TableStyle(nested_styles))
+            nested_t_k1 = Table(grid_data, colWidths=[1.2*cm]*3, rowHeights=[0.8*cm]*2)
+            nested_t_k1.setStyle(TableStyle(nested_styles))
 
-            # --- Dump Count ---
-            dump_count = get_cnt(7)
+            
+            
+            # Construct the Nested Grid for K2
+            p1, p6, p5 = get_count(1, destinations_k2), get_count(6, destinations_k2), get_count(5, destinations_k2)
+            p2, p3, p4 = get_count(2, destinations_k2), get_count(3, destinations_k2), get_count(4, destinations_k2)
+            
+            total_count_k2 = p1 + p6 + p5 + p2 + p3 + p4
 
-            # --- Total Count ---
-            total_count = p1 + p6 + p5 + p2 + p3 + p4 + dump_count
+            ps = [p1, p2, p3, p4, p5, p6]
+
+            # Convert to percentages
+            if total_count_k2 != 0:
+                ps = list(map(lambda x: x / total_count_k2 * 100, ps))
+                p1, p2, p3, p4, p5, p6 = ps
+
+            grid_data = [
+                [f'{p1:.0f}', f'{p6:.0f}', f'{p5:.0f}'], # Top Row
+                [f'{p2:.0f}', f'{p3:.0f}', f'{p4:.0f}']  # Bottom Row
+            ]
+
+            # --- Logic to Highlight Max Value ---
+            # Map values to their (col, row) coordinates in the nested table
+            # Top Row (Row 0): p1(0,0), p6(1,0), p5(2,0)
+            # Bottom Row (Row 1): p2(0,1), p3(1,1), p4(2,1)
+            val_map = [
+                (p1, 0, 0), (p6, 1, 0), (p5, 2, 0),
+                (p2, 0, 1), (p3, 1, 1), (p4, 2, 1)
+            ]
+
+            # Find maximum value
+            max_val = max(v for v, c, r in val_map)
+
+            # Base Nested Table Styles
+            nested_styles = [
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke) # Default background
+            ]
+
+            # Apply Highlight if max > 0
+            if max_val > 0:
+                for val, col, row in val_map:
+                    if val == max_val:
+                        # Append style to override default background for this cell
+                        nested_styles.append(('BACKGROUND', (col, row), (col, row), colors.yellow))
+
+            # Create the Nested Table Object
+            nested_t_k2 = Table(grid_data, colWidths=[1.2*cm]*3, rowHeights=[0.8*cm]*2)
+            nested_t_k2.setStyle(TableStyle(nested_styles))
+
+
 
             # Add Row to Main Table
-            main_table_data.append([f"Rot {int(rot) + 1}", nested_t, dump_count, total_count])
+            main_table_data.append([f"Rot {int(rot) + 1}", nested_t_k1, total_count_k1, nested_t_k2, total_count_k2])
+
+
 
         # 3. Create and Style Main Table
-        t = Table(main_table_data, colWidths=[2.5*cm, 6.0*cm, 2.0*cm, 2.0*cm])
+        t = Table(main_table_data, colWidths=col_widths)
 
         t.setStyle(TableStyle([
             # Header Styling
@@ -156,20 +247,18 @@ def create_setter_report(data, output_filename: str, complex_name: str):
 if __name__ == "__main__":
     
     # Process both K1 and K2 files
-    for complex_name in ['K1', 'K2']:
 
-        input_path = os.path.join('.', 'analysis', f'sets{complex_name}.json')
-        output_path = os.path.join('.', 'reports', f'sets{complex_name}_report.pdf')
+    input_path_1 = os.path.join('.', 'analysis', f'setsK1.json')
+    input_path_2 = os.path.join('.', 'analysis', f'setsK2.json')
+    output_path = os.path.join('.', 'reports', f'setter_report.pdf')
 
-        try:
-            with open(input_path, 'r', encoding='utf-8') as file:
-                sets_data = json.load(file)
-            
-            create_setter_report(sets_data, output_path, complex_name)
+    if not os.path.exists(input_path_1) or not os.path.exists(input_path_2):
+            print("Error: Input files not found.")
+    else:
+        with open(input_path_1, 'r', encoding='utf-8') as file:
+            k1 = json.load(file)
 
-        except FileNotFoundError:
-            print(f"Skipping {complex_name}: File not found at {input_path}")
-        except json.JSONDecodeError:
-            print(f"Error: Invalid JSON format in {input_path}")
-        except Exception as e:
-            print(f"An unexpected error occurred processing {complex_name}: {e}")
+        with open(input_path_2, 'r', encoding='utf-8') as file:
+            k2 = json.load(file)
+
+        generate_pdf_report(k1, k2, output_filename=output_path)
