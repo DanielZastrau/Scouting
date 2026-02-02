@@ -15,7 +15,7 @@ from reportlab.graphics import renderPDF
 
 translation = {'f': 'Float',  's': 'Jumper',  'h': 'Hybrid'}
 
-def draw_court_diagram():
+def draw_court_diagram(data: None | dict = None):
     """
     Creates a Drawing object representing one side of the volleyball court.
     Includes custom user lines and standard zone markers.
@@ -61,56 +61,74 @@ def draw_court_diagram():
     # Dictionary mapping Zone Number -> (x, y)
     zone_coords = {
         1: (width / 4, 5 * height / 6),
-        2: (width / 8, height / 4),
-        3: (2 * width / 8, height / 4),
-        4: (3 * width / 8, height / 4),
-        5: (4 * width / 8, height / 4),
-        6: (5 * width / 8, height / 4),
-        7: (6 * width / 8, height / 4),
-        8: (7 * width / 8, height / 4),
+        2: (width / 8, height / 5),
+        3: (2 * width / 8, height / 5),
+        4: (3 * width / 8, height / 5),
+        5: (4 * width / 8, height / 5),
+        6: (5 * width / 8, height / 5),
+        7: (6 * width / 8, height / 5),
+        8: (7 * width / 8, height / 5),
         9: (3 * width / 4, 5 * height / 6)
     }
 
-    # Add Labels 1-9
-    for z_num, (zx, zy) in zone_coords.items():
-        d.add(String(zx, zy - 3, str(z_num), textAnchor='middle', fontName='Helvetica-Bold', fontSize=12, fillColor=colors.gray))
+    # Add data
+    if data == None:
+        data = {str(i): i for i in range(1, 10)}
 
-    # Add Requested Dots (Zones 3, 5, 7)
-    target_zones = [3, 5, 7]
-    for z in target_zones:
-        cx, cy = zone_coords[z]
+    for z_num, (zx, zy) in zone_coords.items():
+        d.add(String(zx, zy - 3, str(data[str(z_num)]), textAnchor='middle', fontName='Helvetica-Bold', fontSize=12, fillColor=colors.gray))
+
+    # Add dots symbolizing receivers
+    dot_coords = [
+        (2 * width / 8, height / 4),
+        (4 * width / 8, height / 4),
+        (6 * width / 8, height / 4),
+    ]
+    for cx, cy in dot_coords:
         d.add(Circle(cx, cy + 10, 4, fillColor=colors.red, strokeColor=colors.black, strokeWidth=0.5))
 
     return d
 
+
 def calculate_stats(zones: dict) -> dict:
+    """Calculates zone distribution and outcome distribution
+    
+    zones = serves[player_num]
     """
-    Aggregates stats for a single player.
-    """
+    
     stats = {
-        'total_serves': 0, 'aces': 0, 'errors': 0, 'zone_breakdown': {}
+        'zone_dist': {str(i): 0 for i in range(1, 10)},
+        'outcome_dist': {str(i): 0 for i in range(1, 5)},
+        'total_serves': 0,
+        'total_errs': 0,
     }
-    for i in range(1, 10):
-        stats['zone_breakdown'][str(i)] = {'total': 0, 'detail': ''}
 
     for zone, outcomes in zones.items():
-        zone_total = sum(outcomes.values())
 
-        stats['total_serves'] += zone_total
-        stats['aces'] += outcomes.get('1', 0)
-        stats['errors'] += outcomes.get('4', 0)
+        stats['zone_dist'][zone] = outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0)
 
-        if zone in stats['zone_breakdown']:
+        stats['total_serves'] += outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0) + outcomes.get('4', 0)
+        stats['total_errs'] += outcomes.get('4', 0)
 
-            stats['zone_breakdown'][zone]['total'] = zone_total
+        stats['outcome_dist']['1'] += outcomes.get('1', 0)
+        stats['outcome_dist']['2'] += outcomes.get('2', 0)
+        stats['outcome_dist']['4'] += outcomes.get('4', 0)
 
-            aces = outcomes.get('1', 0)
-            errs = outcomes.get('4', 0)
+    # convert to percentages
+    for zone in stats['zone_dist']:
+        
+        if stats['total_serves'] == stats['total_errs']:
+            perc = 0
+        else:
+            perc = (stats['zone_dist'][zone]  / (stats['total_serves'] - stats['total_errs'])) * 100
+        
+        stats['zone_dist'][zone] = f'{perc:.0f}'
 
-            stats['zone_breakdown'][zone]['raw_aces'] = aces 
-            stats['zone_breakdown'][zone]['detail'] = f"{zone_total}Total/{aces}Aces/{errs}Errors"
+    for outcome in stats['outcome_dist']:
+        stats['outcome_dist'][outcome] = f'{stats['outcome_dist'][outcome] / stats['total_serves'] * 100:.0f}'
             
     return stats
+
 
 def get_legend_table():
     """Returns the Legend as a formatted Table element."""
@@ -136,10 +154,12 @@ def get_legend_table():
     
     t = Table(data, colWidths=[16*cm])
     t.setStyle(style)
+
     return t
 
 def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
 
+    # Define the doc
     doc = SimpleDocTemplate(
         output_filename, 
         pagesize=A4,
@@ -151,6 +171,7 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
     styles = getSampleStyleSheet()
 
 
+    # Define the styles
     table_para_style = ParagraphStyle(
         'TablePara',
         parent=styles['Normal'],
@@ -159,7 +180,6 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
         leading=10 
     )
     
-    # --- Title ---
     title_style = ParagraphStyle(
         'CustomTitle', 
         parent=styles['Heading1'], 
@@ -167,30 +187,26 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
         fontSize=16, 
         spaceAfter=10
     )
+    
+    
+    # Append the Title to the elements
     elements.append(Paragraph("SERVES REPORT", title_style))
     
-    # --- Legend ---
+
+    # Add the description of the zones
     elements.append(get_legend_table())
     elements.append(Spacer(1, 0.5*cm))
 
-    # --- Court Diagram & Description ---
-    
-    # 1. Get the Drawing
+
+    # Draw a diagram of the court and the 9 zones to illustrate the concept
     court_drawing = draw_court_diagram()
-    
-    # 2. Define the Template Description Text
-    # You can use standard ReportLab XML tags here (<b>, <i>, <br/>, <font color>)
+
     description_text = """
     The image to the left serves as an illustration of the 9 defined serve zones. The red dots symbolize the receivers.
     """
-    
     desc_para = Paragraph(description_text, styles['Normal'])
-
-    # 3. Layout: Table with 2 columns (Drawing | Text)
-    # Court Drawing is 200 pts wide (~7cm). We'll give it 7.5cm space.
-    # Text gets the remaining space (approx 9cm).
-    diagram_table_data = [[court_drawing, desc_para]]
     
+    diagram_table_data = [[court_drawing, desc_para]]
     diagram_table = Table(diagram_table_data, colWidths=[7.5*cm, 9.5*cm])
     diagram_table.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
@@ -202,9 +218,9 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
     elements.append(Spacer(1, 0.5*cm))
     
     # --- Main Data Table Setup ---
-    header_row = ['Plyr', 'Tot', 'Ace', 'Err', 'Zone Details (Total/Ace/Err)']
+    header_row = ['Plyr', 'Zone Distribution in %', 'Outcome Distribution']
     
-    col_widths = [1.5*cm, 1.2*cm, 1.2*cm, 1.2*cm, 11*cm]
+    col_widths = [1.5*cm, 8*cm, 7.5*cm]
     current_table_data = [header_row] 
     
     current_table_style = [
@@ -215,79 +231,29 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]
 
-    sorted_players = sorted(serves.keys())
-    row_idx = 1 
+    sorted_players = sorted(serves.keys(), key = lambda x: int(x))
+    row_idx = 1
 
     for player_num in sorted_players:
-        already_added_serve_type = False 
+        already_added_serve_type = False
 
-        p_stats = calculate_stats(serves[player_num])
+        player_stats = calculate_stats(serves[player_num])
         
-        # --- Identify Max Zones ---
-        max_aces = -1
-        max_ace_zone = None
-        max_serves = -1
-        max_serve_zone = None
+        most_serves_zones = [zone for zone in player_stats['zone_dist'] if player_stats['zone_dist'][zone] == max(player_stats['zone_dist'].values())]
 
-        for z, data in p_stats['zone_breakdown'].items():
+        # Zone Distribution, i.e. court diagram
+        zone_dist = draw_court_diagram(data=player_stats['zone_dist'])
 
-            if data.get('raw_aces', 0) > max_aces:
-                max_aces = data.get('raw_aces', 0)
-                max_ace_zone = z
-            
-            if data['total'] > max_serves:
-                max_serves = data['total']
-                max_serve_zone = z
-                
-        if max_aces == 0:
-            max_ace_zone = None
-        
-        if max_serves == 0:
-            max_serve_zone = None
+        # Outcomes
+        outcome_dist = f'Type: {translation[serve_types[player_num]]}\n\
+Total serves:  {player_stats['total_serves']}\n\
+aces {player_stats['outcome_dist']['1']}% / came back {player_stats['outcome_dist']['2']}% / err {player_stats['outcome_dist']['4']}%'
 
-        # 1. Summary Row
-        summary_row = [f"#{player_num}",  p_stats['total_serves'],  p_stats['aces'],  p_stats['errors'],  "" ]
+        summary_row = [f"#{player_num}", zone_dist, outcome_dist]
 
         current_table_data.append(summary_row)
         current_table_style.append(('FONTBOLD', (0, row_idx), (0, row_idx), True))
         row_idx += 1
-        
-
-        # 2. Detail Row(s)
-        active_zones = [z for z, data in p_stats['zone_breakdown'].items()]
-        
-        if not active_zones:
-            pass 
-        else:
-            chunk_size = 3
-            for i in range(0, len(active_zones), chunk_size):
-                chunk = active_zones[i:i+chunk_size]
-                detail_strs = []
-                
-                for z in chunk:
-                    txt = f"Z{z}:{p_stats['zone_breakdown'][z]['detail']}"
-                    
-                    font_size = 6
-                    if z == max_ace_zone:
-                        txt = f"<font color='red' size='{font_size}'>{txt}</font>"
-                    elif z == max_serve_zone:
-                        txt = f"<font color='blue' size='{font_size}'>{txt}</font>"
-                    else:
-                        txt = f"<font color='black' size='{font_size}'>{txt}</font>"
-                    
-                    detail_strs.append(txt)
-                
-                row_xml = " | ".join(detail_strs)
-                para = Paragraph(row_xml, table_para_style)
-                
-                if already_added_serve_type:
-                    first_elem = ''
-                else:
-                    first_elem = translation.get(serve_types.get(str(player_num), ''), 'Unknown')
-                    already_added_serve_type = True
-
-                current_table_data.append([first_elem, "", "", "", para])
-                row_idx += 1
 
         current_table_style.append(('LINEBELOW', (0, row_idx-1), (-1, row_idx-1), 0.5, colors.lightgrey))
 
@@ -306,16 +272,13 @@ if __name__ == "__main__":
     input_path_2 = os.path.join('.', 'analysis', 'serve_types.json')
     output_path = os.path.join('.', 'reports', 'serves_report.pdf')
 
-    try:
-        if not os.path.exists(input_path_1) or not os.path.exists(input_path_2):
-             print("Error: Input files not found.")
-        else:
-            with open(input_path_1, 'r', encoding='utf-8') as file:
-                serves_data = json.load(file)
+    if not os.path.exists(input_path_1) or not os.path.exists(input_path_2):
+            print("Error: Input files not found.")
+    else:
+        with open(input_path_1, 'r', encoding='utf-8') as file:
+            serves_data = json.load(file)
 
-            with open(input_path_2, 'r', encoding='utf-8') as file:
-                serve_types = json.load(file)
+        with open(input_path_2, 'r', encoding='utf-8') as file:
+            serve_types = json.load(file)
 
-            generate_pdf_report(serves_data, serve_types, output_filename=output_path)
-    except Exception as e:
-        print(f"Error: {e}")
+        generate_pdf_report(serves_data, serve_types, output_filename=output_path)
