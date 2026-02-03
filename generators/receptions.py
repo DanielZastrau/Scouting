@@ -97,6 +97,10 @@ def generate_reception_pdf(receptions: dict, output_filename: str):
         # Initialize styling with Header styles
         table_style_cmds = [
             ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('BACKGROUND', (0, 1), (0, -1), colors.lightgrey),
+
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -104,8 +108,6 @@ def generate_reception_pdf(receptions: dict, output_filename: str):
             ('FONTSIZE', (0, 0), (-1, 0), 10),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
             ('TOPPADDING', (0, 0), (-1, 0), 8),
-            # Grid for Header only
-            ('GRID', (0, 0), (-1, 0), 0.5, colors.grey),
         ]
 
 

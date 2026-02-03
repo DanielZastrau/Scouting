@@ -203,6 +203,8 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
 
     description_text = """
     The image to the left serves as an illustration of the 9 defined serve zones. The red dots symbolize the receivers.
+    <font color="red">When the receivers move, the zones move with them, this serves only as an illustration. That is, no matter where the receivers start,
+    zone 4 is always the gap between the receiver on position 6 and the one on position 5</font>.
     """
     desc_para = Paragraph(description_text, styles['Normal'])
     
