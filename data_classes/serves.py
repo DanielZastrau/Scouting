@@ -7,17 +7,22 @@ class Serves():
     
     # Modifier
 
-    def add_player(self, player: int):
+    def add_player(self, player: int) -> None:
 
-        self.serves[player] = {zone: {outcome: 0 for outcome in range(1, 5)} for zone in range(1, 10)}
+        self.serves[player] = {
+            type_: {zone: {outcome: 0 
+                for outcome in range(1, 5)} 
+                for zone in range(1, 10)}
+                for type_ in range(1, 5)        
+        }
 
 
-    def add_serve_to_player(self, player, zone, outcome):
+    def add_serve_to_player(self, player: int, type_: int, zone: int, outcome: int) -> None:
 
         if not player in self.serves:
             self.add_player(player)
 
-        self.serves[player][zone][outcome] += 1
+        self.serves[player][type_][zone][outcome] += 1
 
 
     # Save

@@ -13,7 +13,13 @@ from reportlab.platypus import (
 from reportlab.graphics.shapes import Drawing, Rect, Line, String, Circle
 from reportlab.graphics import renderPDF
 
-translation = {'f': 'Float',  's': 'Jumper',  'h': 'Hybrid'}
+translation = {
+    '1': 'Float',
+    '2': 'Jumper',
+    '3': 'Jumper after float toss',
+    '4': 'Floater after jump toss',
+}
+
 
 def draw_court_diagram(data: None | dict = None):
     """
@@ -90,42 +96,46 @@ def draw_court_diagram(data: None | dict = None):
     return d
 
 
-def calculate_stats(zones: dict) -> dict:
+def calculate_stats(data: dict) -> dict:
     """Calculates zone distribution and outcome distribution
     
-    zones = serves[player_num]
+    data = serves[player_num]
     """
     
     stats = {
-        'zone_dist': {str(i): 0 for i in range(1, 10)},
-        'outcome_dist': {str(i): 0 for i in range(1, 5)},
-        'total_serves': 0,
-        'total_errs': 0,
+        str(serve_type): {
+            'zone_dist': {str(i): 0 for i in range(1, 10)},
+            'outcome_dist': {str(i): 0 for i in range(1, 5)},
+            'total_serves': 0,
+            'total_errs': 0,} for serve_type in range(1, 5)
     }
 
-    for zone, outcomes in zones.items():
+    for serve_type, zones in data.items():
+        for zone, outcomes in zones.items():
 
-        stats['zone_dist'][zone] = outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0)
+            stats[serve_type]['zone_dist'][zone] = outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0)
 
-        stats['total_serves'] += outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0) + outcomes.get('4', 0)
-        stats['total_errs'] += outcomes.get('4', 0)
+            stats[serve_type]['total_serves'] += outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0) + outcomes.get('4', 0)
+            stats[serve_type]['total_errs'] += outcomes.get('4', 0)
 
-        stats['outcome_dist']['1'] += outcomes.get('1', 0)
-        stats['outcome_dist']['2'] += outcomes.get('2', 0)
-        stats['outcome_dist']['4'] += outcomes.get('4', 0)
+            stats[serve_type]['outcome_dist']['1'] += outcomes.get('1', 0)
+            stats[serve_type]['outcome_dist']['2'] += outcomes.get('2', 0)
+            stats[serve_type]['outcome_dist']['4'] += outcomes.get('4', 0)
 
     # convert to percentages
-    for zone in stats['zone_dist']:
-        
-        if stats['total_serves'] == stats['total_errs']:
-            perc = 0
-        else:
-            perc = (stats['zone_dist'][zone]  / (stats['total_serves'] - stats['total_errs'])) * 100
-        
-        stats['zone_dist'][zone] = f'{perc:.0f}'
+    for serve_type in stats:
+        for zone in stats[serve_type]['zone_dist']:
+            
+            if stats[serve_type]['total_serves'] == stats[serve_type]['total_errs']:
+                perc = 0
+            else:
+                perc = (stats[serve_type]['zone_dist'][zone]  / (stats[serve_type]['total_serves'] - stats[serve_type]['total_errs'])) * 100
+            
+            stats[serve_type]['zone_dist'][zone] = f'{perc:.0f}'
 
-    for outcome in stats['outcome_dist']:
-        stats['outcome_dist'][outcome] = f'{stats['outcome_dist'][outcome] / stats['total_serves'] * 100:.0f}'
+    for serve_type in stats:
+        for outcome in stats[serve_type]['outcome_dist']:
+            stats[serve_type]['outcome_dist'][outcome] = f'{stats[serve_type]['outcome_dist'][outcome] / stats[serve_type]['total_serves'] * 100:.0f}'
             
     return stats
 
@@ -157,7 +167,7 @@ def get_legend_table():
 
     return t
 
-def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
+def generate_pdf_report(serves: dict, output_filename: str):
 
     # Define the doc
     doc = SimpleDocTemplate(
@@ -219,10 +229,11 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
     elements.append(diagram_table)
     elements.append(Spacer(1, 0.5*cm))
     
+
     # --- Main Data Table Setup ---
-    header_row = ['Plyr', 'Zone Distribution in %', 'Outcome Distribution']
+    header_row = ['Plyr', 'Serve Type', 'Zone Distribution in %', 'Outcome Distribution']
     
-    col_widths = [1.5*cm, 8*cm, 7.5*cm]
+    col_widths = [1.5*cm, 1.5*cm, 8*cm, 6*cm]
     current_table_data = [header_row] 
     
     current_table_style = [
@@ -233,54 +244,63 @@ def generate_pdf_report(serves: dict, serve_types: dict, output_filename: str):
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]
 
+
     sorted_players = sorted(serves.keys(), key = lambda x: int(x))
     row_idx = 1
 
     for player_num in sorted_players:
-        already_added_serve_type = False
 
         player_stats = calculate_stats(serves[player_num])
-        
-        most_serves_zones = [zone for zone in player_stats['zone_dist'] if player_stats['zone_dist'][zone] == max(player_stats['zone_dist'].values())]
 
-        # Zone Distribution, i.e. court diagram
-        zone_dist = draw_court_diagram(data=player_stats['zone_dist'])
 
-        # Outcomes
-        outcome_dist = f'Type: {translation[serve_types[player_num]]}\n\
-Total serves:  {player_stats['total_serves']}\n\
-aces {player_stats['outcome_dist']['1']}% / came back {player_stats['outcome_dist']['2']}% / err {player_stats['outcome_dist']['4']}%'
+        for serve_type in player_stats:
+                
+            if player_stats[serve_type]['total_serves'] == 0:
+                continue
 
-        summary_row = [f"#{player_num}", zone_dist, outcome_dist]
 
-        current_table_data.append(summary_row)
-        current_table_style.append(('FONTBOLD', (0, row_idx), (0, row_idx), True))
-        row_idx += 1
+            # Zone Distribution, i.e. court diagram
+            zone_dist = draw_court_diagram(data=player_stats[serve_type]['zone_dist'])
 
-        current_table_style.append(('LINEBELOW', (0, row_idx-1), (-1, row_idx-1), 0.5, colors.lightgrey))
+
+            # Outcomes
+            lines = []
+            lines.append('<b>By Outcome:</b>')
+            for outcome_key, outcome_name in translation.items():
+                lines.append(f'- {outcome_name}: {player_stats[serve_type]['outcome_dist'][outcome_key]}%')
+            outcome_dist = "<br/>".join(lines)
+
+
+            summary_row = [f"#{player_num}", f'{translation[serve_type]}', zone_dist, outcome_dist]
+
+
+            current_table_data.append(summary_row)
+            current_table_style.append(('FONTBOLD', (0, row_idx), (0, row_idx), True))
+            row_idx += 1
+
+            current_table_style.append(('LINEBELOW', (0, row_idx-1), (-1, row_idx-1), 0.5, colors.lightgrey))
+
 
     if len(current_table_data) > 1:
         t = Table(current_table_data, colWidths=col_widths, repeatRows=1)
         t.setStyle(TableStyle(current_table_style))
         elements.append(t)
 
+
     doc.build(elements)
     print(f"PDF generated successfully: {output_filename}")
+
 
 if __name__ == "__main__":
 
     # Determine paths
-    input_path_1 = os.path.join('.', 'analysis', 'serves.json')
-    input_path_2 = os.path.join('.', 'analysis', 'serve_types.json')
+    input_path = os.path.join('.', 'analysis', 'serves.json')
     output_path = os.path.join('.', 'reports', 'serves_report.pdf')
 
-    if not os.path.exists(input_path_1) or not os.path.exists(input_path_2):
+    if not os.path.exists(input_path):
             print("Error: Input files not found.")
     else:
-        with open(input_path_1, 'r', encoding='utf-8') as file:
+        with open(input_path, 'r', encoding='utf-8') as file:
             serves_data = json.load(file)
 
-        with open(input_path_2, 'r', encoding='utf-8') as file:
-            serve_types = json.load(file)
-
-        generate_pdf_report(serves_data, serve_types, output_filename=output_path)
+        generate_pdf_report(serves_data, output_filename=output_path)

@@ -102,7 +102,7 @@ def main(filename: str):
 
                 # .  --  indicates a serve
                 if action == '.':
-                    mode = 'looking for serve zone next'
+                    mode = 'looking for type of serve next'
 
                     if team_mode == 'receiving':
                         lineup.rotate_lineup()
@@ -110,6 +110,7 @@ def main(filename: str):
                     team_mode = 'serving'
 
                     serves_player = lineup.get_server()
+                    serves_type = 0
                     serves_zone = 0
                     serves_outcome = 0
 
@@ -133,6 +134,16 @@ def main(filename: str):
 
 
             #--------------------------------------------------------------------------------------
+
+
+            # . float,  .. jumper,  ... jumper after float toss,  .... float after jump toss
+            elif mode == 'looking for type of serve next':
+                
+                assert 1 <= len(action) <= 4, f'ERR:  action {action} not eligible. Only 4 serve types defined'
+
+                serves_type = len(action)
+
+                mode = 'looking for serve zone next'
 
 
             # this should be a group of . of lengths 1 - 9
