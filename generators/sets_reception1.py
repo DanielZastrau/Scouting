@@ -15,7 +15,7 @@ def aggregate_counts(set_type_data):
     """
     return sum(set_type_data.values())
 
-def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
+def generate_pdf_report(data_k1: dict, data_k3: dict, output_filename: str):
 
     doc = SimpleDocTemplate(
         output_filename,
@@ -26,8 +26,9 @@ def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
 
     elements = []
     styles = getSampleStyleSheet()
-    
-    # Custom Title Style
+
+
+    # Custom Title Styles
     title_style = ParagraphStyle(
         'SetterTitle',
         parent=styles['Heading1'],
@@ -35,13 +36,21 @@ def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
         fontSize=16,
         spaceAfter=12
     )
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Heading2'],
+        alignement=1, # Center
+        fontSize=12,
+        spaceAfter=10,
+    )
+
 
     # Sort players numerically
     player_ids = sorted(data_k1.keys(), key=lambda x: int(x))
 
     for player_id in player_ids:
         player_data_k1 = data_k1[player_id]
-        player_data_k2 = data_k2[player_id]
+        player_data_k3 = data_k3[player_id]
 
 
         # Add Player Title
@@ -49,8 +58,12 @@ def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
         elements.append(Spacer(1, 0.5*cm))
 
 
+        elements.append(Paragraph("K1 compared against K1 after Reception on Pos 1", subtitle_style))
+        elements.append(Spacer(1, 0.5*cm))
+
+
         # Header Row
-        main_table_data = [["Rotation", "K1 in %", "Total\nSets", "K2 in %", "Total\nSets"]]
+        main_table_data = [["Rotation", "K1 in %", "Total\nSets", "K3 in %", "Total\nSets"]]
         col_widths = [1.5*cm, 6.0*cm, 2.0*cm, 6.0*cm, 2.0*cm]
 
 
@@ -88,7 +101,7 @@ def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
 
         for rot in rotations:
             destinations_k1 = player_data_k1[rot]
-            destinations_k2 = player_data_k2[rot]
+            destinations_k3 = player_data_k3[rot]
             
             # Helper to safely get counts
             def get_count(p, data):
@@ -150,17 +163,17 @@ def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
 
             
             
-            # Construct the Nested Grid for K2
-            p1, p6, p5 = get_count(1, destinations_k2), get_count(6, destinations_k2), get_count(5, destinations_k2)
-            p2, p3, p4 = get_count(2, destinations_k2), get_count(3, destinations_k2), get_count(4, destinations_k2)
+            # Construct the Nested Grid for k3
+            p1, p6, p5 = get_count(1, destinations_k3), get_count(6, destinations_k3), get_count(5, destinations_k3)
+            p2, p3, p4 = get_count(2, destinations_k3), get_count(3, destinations_k3), get_count(4, destinations_k3)
             
-            total_count_k2 = p1 + p6 + p5 + p2 + p3 + p4
+            total_count_k3 = p1 + p6 + p5 + p2 + p3 + p4
 
             ps = [p1, p2, p3, p4, p5, p6]
 
             # Convert to percentages
-            if total_count_k2 != 0:
-                ps = list(map(lambda x: x / total_count_k2 * 100, ps))
+            if total_count_k3 != 0:
+                ps = list(map(lambda x: x / total_count_k3 * 100, ps))
                 p1, p2, p3, p4, p5, p6 = ps
 
             grid_data = [
@@ -198,13 +211,13 @@ def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
                         nested_styles.append(('BACKGROUND', (col, row), (col, row), colors.yellow))
 
             # Create the Nested Table Object
-            nested_t_k2 = Table(grid_data, colWidths=[1.2*cm]*3, rowHeights=[0.8*cm]*2)
-            nested_t_k2.setStyle(TableStyle(nested_styles))
+            nested_t_k3 = Table(grid_data, colWidths=[1.2*cm]*3, rowHeights=[0.8*cm]*2)
+            nested_t_k3.setStyle(TableStyle(nested_styles))
 
 
 
             # Add Row to Main Table
-            main_table_data.append([f"Rot {int(rot) + 1}", nested_t_k1, total_count_k1, nested_t_k2, total_count_k2])
+            main_table_data.append([f"Rot {int(rot) + 1}", nested_t_k1, total_count_k1, nested_t_k3, total_count_k3])
 
 
 
@@ -245,11 +258,11 @@ def generate_pdf_report(data_k1: dict, data_k2: dict, output_filename: str):
 
 if __name__ == "__main__":
     
-    # Process both K1 and K2 files
+    # Process both K1 and k3 files
 
     input_path_1 = os.path.join('.', 'analysis', f'setsK1.json')
-    input_path_2 = os.path.join('.', 'analysis', f'setsK2.json')
-    output_path = os.path.join('.', 'reports', f'setter_report.pdf')
+    input_path_2 = os.path.join('.', 'analysis', f'setsK3.json')
+    output_path = os.path.join('.', 'reports', f'setter_afterReception1_report.pdf')
 
     if not os.path.exists(input_path_1) or not os.path.exists(input_path_2):
             print("Error: Input files not found.")
@@ -258,6 +271,6 @@ if __name__ == "__main__":
             k1 = json.load(file)
 
         with open(input_path_2, 'r', encoding='utf-8') as file:
-            k2 = json.load(file)
+            k3 = json.load(file)
 
-        generate_pdf_report(k1, k2, output_filename=output_path)
+        generate_pdf_report(k1, k3, output_filename=output_path)

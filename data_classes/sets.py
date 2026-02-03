@@ -6,10 +6,12 @@ class Sets():
     outsides/dia:  1 shoot,  2 normal,  3 high
     setter:  1 always
 
-    complex:  1 for K1,  2 for K2
+    complex:  1 for K1,  2 for K2,  3 for reception behind the setter
     """
 
     def __init__(self, complex: int):
+
+        assert complex in [1, 2, 3], f'Complex {complex} is not defined'
 
         self.sets = {}
         self.complex = complex

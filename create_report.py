@@ -12,11 +12,12 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # Define the order priority based on substrings
 PRIORITY_ORDER = [
-    'serves',
-    'receptions',
-    'setsK1',
-    'setsK2',
-    'hits'
+    'serves_report',
+    'receptions_report',
+    'setter_report',
+    'setter_report',
+    'setter_afterReception1_report',
+    'hits_report',
 ]
 
 def get_sort_key(filename):

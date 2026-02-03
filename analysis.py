@@ -43,9 +43,13 @@ def main(filename: str):
 
     # define information dataclasses to be filled
     serves = Serves()
+
     receptions = Receptions()
+    
     sets_c1 = Sets(complex=1)
     sets_c2 = Sets(complex=2)
+    sets_special_case1 = Sets(complex=3)
+
     hits = Hits()
 
     c = 1
@@ -78,7 +82,7 @@ def main(filename: str):
         # breaks become empty strings ''
         actions = actions.split(' ')
         for ii, action in enumerate(actions):
-            print(f'action {ii}  --  {action}')
+            # print(f'action {ii}  --  {action}')
 
 
             if action == '':
@@ -188,13 +192,13 @@ def main(filename: str):
                 # opposing team missed their serve
                 if len(action) == 0:
                     mode = 'looking for action'
+                    continue
 
-                elif 1 <= len(action) <= 6:
-                    receptions_position = len(action)
+                receptions_position = len(action)
 
-                    receptions_player = lineup.get_receiving_player_on_position(receptions_position)
+                receptions_player = lineup.get_receiving_player_on_position(receptions_position)
 
-                    mode = 'looking for reception outcome next'
+                mode = 'looking for reception outcome next'
 
 
             # . perfect, .. okay, ... bad, ... error (aced / back over the net)
@@ -242,6 +246,10 @@ def main(filename: str):
 
                 if complex == 1:
                     sets_c1.add_set_to_player(lineup.setter, rotation, sets_destination, sets_type)
+
+                    if receptions_position == 1:
+                        sets_special_case1.add_set_to_player(lineup.setter, rotation, sets_destination, sets_type)
+
                 elif complex == 2:
                     sets_c2.add_set_to_player(lineup.setter, rotation, sets_destination, sets_type)
 
@@ -290,9 +298,13 @@ def main(filename: str):
             
 
     serves.save(analysis_dir_path)
+
     receptions.save(analysis_dir_path)
+    
     sets_c1.save(analysis_dir_path)
     sets_c2.save(analysis_dir_path)
+    sets_special_case1.save(analysis_dir_path)
+    
     hits.save(analysis_dir_path)
     
 

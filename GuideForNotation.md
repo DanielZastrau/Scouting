@@ -46,6 +46,8 @@
 * serve type 1 - 2
   * 1  float
   * 2  jump
+  * 3  jumper after float toss
+  * 4  float after jump toss
 
 * serve zone 1 - 9
   * zone 1 is front court left half
@@ -63,7 +65,6 @@
 * reception type 1 - 3
   * 1  float
   * 2  jumper
-  * 3  hybrid
 
 * receiving position 1 - 6 - 5 - 3
 
