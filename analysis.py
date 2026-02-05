@@ -31,12 +31,6 @@ def main(filename: str):
     data = [line for line in data if (not line.startswith('#')) and (len(line) != 0)]
 
 
-    # read out serve type
-    serve_types = ServeTypes()
-    serve_types.extract_serve_types(data[0])
-    serve_types.save(analysis_dir_path)
-
-
     # remove serve pos line and serve type line
     data = [line for line in data if not line.startswith('>')]
 
@@ -82,7 +76,8 @@ def main(filename: str):
         # breaks become empty strings ''
         actions = actions.split(' ')
         for ii, action in enumerate(actions):
-            # print(f'action {ii}  --  {action}')
+            
+            print(mode, f'action {ii}', action)
 
 
             if action == '':
@@ -139,47 +134,36 @@ def main(filename: str):
             # . float,  .. jumper,  ... jumper after float toss,  .... float after jump toss
             elif mode == 'looking for type of serve next':
                 
-                assert 1 <= len(action) <= 4, f'ERR:  action {action} not eligible. Only 4 serve types defined'
+                assert 1 <= len(action) <= 4, f'ERR:  action {action} not eligible. Only 4 serve types defined.'
 
                 serves_type = len(action)
 
                 mode = 'looking for serve zone next'
 
 
-            # this should be a group of . of lengths 1 - 9
+            # this should be a group of . of lengths 1 - 10, 1 - 9 zones, 10 not attributable
             elif mode == 'looking for serve zone next':
                 
-                assert 1 <= len(action) <= 9, f'ERR:  action {action} not eligible. Only 9 service zones are defined'
+                assert 1 <= len(action) <= 10, f'ERR:  action {action} not eligible. Only 10 service zones are defined.'
 
                 mode = 'looking for serve outcome next'
                 
                 serves_zone = len(action)
 
 
-            # . ace, .. came back over, ... received, .... err
+            # . ace, .. overpass, ... received,  .... error
             elif mode == 'looking for serve outcome next':
 
-                assert 1 <= len(action) <= 4, f'ERR:  action {action} not eligible. Only 4 service outcomes are defined' 
+                assert 1 <= len(action) <= 4, f'ERR:  action {action} not eligible. Only 4 service outcomes are defined.' 
                 
                 serves_outcome = len(action)
 
-                serves.add_serve_to_player(serves_player, serves_zone, serves_outcome)
+                serves.add_serve_to_player(serves_player, serves_type, serves_zone, serves_outcome)
                 
-                # .  --  ace
-                if len(action) == 1:
-                    mode = 'ace'    # after this I can expect there to be an empty string
 
-                # ..  --  came back over
-                elif len(action) == 2:
+                # ..  --  came back over,  ...  --  received
+                if len(action) in [2, 3]:
                     mode = 'looking for set destination next'
-
-                # ...  --  received
-                elif len(action) == 3:
-                    mode = 'looking for possible return of the ball'
-
-                # ....  --  error
-                elif len(action) == 4:
-                    mode = 'service was an error'    # after this I can expect there to be an empty string
 
 
             #--------------------------------------------------------------------------------------
@@ -188,7 +172,7 @@ def main(filename: str):
             # . float, .. jumper
             elif mode == 'looking for reception type next':
 
-                assert 1 <= len(action) <= 2, f'ERR: action {action} not eligible. Only 2 reception types are defined'
+                assert 1 <= len(action) <= 2, f'ERR: action {action} not eligible. Only 2 reception types are defined.'
 
                 mode = 'looking for receiving position next'
 
@@ -215,7 +199,7 @@ def main(filename: str):
             # . perfect, .. okay, ... bad, ... error (aced / back over the net)
             elif mode == 'looking for reception outcome next':
 
-                assert 1 <= len(action) <= 4, f'ERR: action {action} not eligible. Only 4 reception outcomes are defined'
+                assert 1 <= len(action) <= 4, f'ERR: action {action} not eligible. Only 4 reception outcomes are defined. '
                 
                 receptions_outcome = len(action)
 
@@ -264,48 +248,49 @@ def main(filename: str):
                 elif complex == 2:
                     sets_c2.add_set_to_player(lineup.setter, rotation, sets_destination, sets_type)
 
-                mode = 'looking for zone of hit next'
+                mode = 'looking for type of hit next'
 
 
             #--------------------------------------------------------------------------------------
 
 
+            # . hit,  .. tip,  ... rebound
+            elif mode == 'looking for type of hit next':
+
+                assert 1 <= len(action) <= 3, f'ERR: action {action} not eligible. Only 3 types of hits are defined.'
+
+                type_of_hit = len(action)
+
+                mode = 'looking for zone of hit next'
+
+
             # 1 - 5,  from leftmost to rightmost,  just divide the court equally
+            # 6 - zone for short tips
+            # 7 - zone for not attributable blocked hits and errors
             elif mode == 'looking for zone of hit next':
 
-                assert 1 <= len(action) <= 5, f'ERR: action {action} not eligible. Only 5 hitting zones are defined.'
+                assert 1 <= len(action) <= 7, f'ERR: action {action} not eligible. Only 7 hitting zones are defined.'
 
                 mode = 'looking for outcome of hit next'
 
                 hits_zone = len(action)
 
 
-            # . point,  .. defended,  ... blocked,  .... error
+            # . point,  .. defended,  ... block out,  .... blocked,  ..... error
             elif mode == 'looking for outcome of hit next':
 
-                assert 1 <= len(action) <= 4, f'ERR: action {action} not eligible. Only 4 hitting outcomes are defined.'
+                assert 1 <= len(action) <= 5, f'ERR: action {action} not eligible. Only 5 hitting outcomes are defined.'
 
                 hits_outcome = len(action)
 
                 hits.add_hit_to_player(hits_player, sets_destination, sets_type, hits_zone, hits_outcome)
 
-                # .  --  point
-                if action == '.':
-                    mode = 'point'
 
                 # ..  --  defended  --  that includes a defense which comes straight back over and rebound off the block
-                elif action == '..':
+                if action == '..':
                     mode = 'looking for set destination next'
 
                     complex = 2    # potential return of ball
-
-                # ...  --  blocked
-                elif action == '...':
-                    mode = 'blocked'    # after this I can expect there to be an empty string
-
-                # ....  --  error
-                elif action == '....':
-                    mode = 'error'    # after this I can expect there to be an empty string
             
 
     serves.save(analysis_dir_path)

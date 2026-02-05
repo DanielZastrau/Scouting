@@ -38,10 +38,10 @@ def calculate_reception_stats(player_serves: dict, serve_type: str) -> dict:
 
         # Turn to percentages and add to summary
         if not total == 0:
-            summary['perfect'] += perfect / total * 100
-            summary['okay'] += okay / total * 100
-            summary['bad'] += bad / total * 100
-            summary['error'] += error / total * 100
+            summary['perfect'] += perfect
+            summary['okay'] += okay
+            summary['bad'] += bad
+            summary['error'] += error
             summary['total'] += total
 
     return summary
@@ -88,7 +88,7 @@ def generate_reception_pdf(receptions: dict, output_filename: str):
 
 
         # --- Table Setup ---
-        headers = ["Player", "Tot", "Perf%", "Okay%", "Bad%", "Err%"]
+        headers = ["Player", "Tot", "Perf(%)", "Okay(%)", "Bad(%)", "Err(%)"]
         col_widths = [2.5*cm, 2.5*cm, 2.0*cm, 2.0*cm, 2.0*cm, 2.0*cm]
 
         table_data = [headers]
@@ -119,15 +119,19 @@ def generate_reception_pdf(receptions: dict, output_filename: str):
         for player_num in sorted_player_keys:
 
             stats = calculate_reception_stats(receptions[player_num], serve_type=serve_type)
-            
+
+
+            if stats['total'] == 0:
+                continue
+
 
             datarow = [
                 f"#{player_num}",
-                str(int(stats['total'])),
-                f"{stats['perfect']:.0f}",
-                f"{stats['okay']:.0f}",
-                f"{stats['bad']:.0f}",
-                f"{stats['error']:.0f}",
+                str(stats['total']),
+                f"{stats['perfect']}-({stats['perfect'] / stats['total'] * 100:.0f}%)",
+                f"{stats['okay']}-({stats['okay'] / stats['total'] * 100:.0f}%)",
+                f"{stats['bad']}-({stats['bad'] / stats['total'] * 100:.0f}%)",
+                f"{stats['error']}-({stats['error'] / stats['total'] * 100:.0f}%)",
             ]
 
             table_data.append(datarow)

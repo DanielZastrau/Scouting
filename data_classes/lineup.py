@@ -120,7 +120,7 @@ class Lineup():
                     return frontcourt_players[frontcourt_meta.index('OP')]
                 except ValueError:
                     print(f'\\033[31m Faulty scouting there is no opposite in the front row, current lineup: {self.lineup}. Will assume opposite in the back row')
-                    return frontcourt_players[frontcourt_meta.index('OP')]
+                    return backcourt_players[backcourt_meta.index('OP')]
 
         # middle was set
         if position == 3:
@@ -176,14 +176,14 @@ class Lineup():
 
 
     def modify_lineup(self, substitution: str):
-        """e.g. <12-13>
+        """e.g. <12x13>
 
         if it is a diagonal substituion it would look like this
-        e.g.  <x-y>  <a-b>  <->
+        e.g.  <axb>  <aaxbb>  <x>
         """
 
         # detect diagonal substitution
-        if substitution == '<->':
+        if substitution == '<x>':
             
             # then the substitutions already happened, I only need to change the setter value and the meta
             opposite_index = self.meta.index('OP')
@@ -196,7 +196,7 @@ class Lineup():
 
         else:
             relevant = substitution[1:-1]
-            player_out, player_in = list(map(int, relevant.split('-')))
+            player_out, player_in = list(map(int, relevant.split('x')))
 
             # libero is special case
             if player_out == self.libero:

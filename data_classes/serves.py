@@ -1,4 +1,8 @@
 class Serves():
+    """
+    zones 1 - 9, all the relevant zones in the backcourt + 2 frontcourt zones
+    zone 10,  not attributable in case of error
+    """
 
     def __init__(self):
 
@@ -12,7 +16,7 @@ class Serves():
         self.serves[player] = {
             type_: {zone: {outcome: 0 
                 for outcome in range(1, 5)} 
-                for zone in range(1, 10)}
+                for zone in range(1, 11)}
                 for type_ in range(1, 5)        
         }
 
@@ -21,6 +25,9 @@ class Serves():
 
         if not player in self.serves:
             self.add_player(player)
+
+        if zone != 10 and outcome == 4:
+            raise Exception('Serve errors are never attributable to a specific zone.')
 
         self.serves[player][type_][zone][outcome] += 1
 

@@ -1,11 +1,4 @@
 # Notation for scouting
-* the > denotes the line detailing the positions from which each player serves
-  * 1 denotes the left sideline, 5 the right, 2-4 align in between
-  *     >20 3  7 3  10 2  24 5  4 2  14 2
-
-* the >> denotes the types of serves the players do
-  * s for spin,  f for float,  h for hybrid
-  *     >>20 s  7 s  10 s  24 f  4 f  14 s
 
 * each line represents a set
 
@@ -19,10 +12,10 @@
   *     .. is reception
 
 * a player substitution is denoted as follows and has to be preceded by a break and followed by one
-  *     <x-y>
-  * the player with number x is swapped out for the player with number y
+  *     <axb>
+  * the player with number a is swapped out for the player with number b
   * if it is a diagonal substitution, then it is denoted with an extra bracket
-    *     <x-y>  <a-b>  <->
+    *     <axb>  <aaxbb>  <x>
 
 * a serve
   * is followed by a serve type
@@ -37,9 +30,11 @@
   * is followed by a reception quality
   * is followed by a set destination
     * special case:  the setter dumps it
-    * is followed by a break (point or error) or a set destination (ball was returned)
+      * is followed by a break (point or error) or a set destination (ball was returned)
   * is followed by a set type
+  * is followed by an attack type
   * is followed by an attack zone
+    * special case:  if the hit is an error or it is blocked, and can also not be attributed to a specific zone, then they are noted as extra zones
   * is followed by an attack outcome
   * is followed by either a break (point or error) or a set destination (ball was returned (either by rebounding it off the block or by attack))
 
@@ -49,18 +44,19 @@
   * 3  jumper after float toss
   * 4  float after jump toss
 
-* serve zone 1 - 9
+* serve zone 1 - 10
   * zone 1 is front court left half
   * zone 2 is left sideline
   * zone 3 is position 5
   * zone 4 is gap between 5 and 6
   * ...
+  * zone 10 is for errors
 
 * serve outcome 1 - 4
   * 1  ace
-  * 2  came back over
+  * 2  overpass
   * 3  received
-  * 4  error
+  * 4  error,  serve error is never attributable to a specific zone
 
 * reception type 1 - 3
   * 1  float
@@ -91,16 +87,29 @@
   * setter dump:
     * 1  -
 
-* attack zone 1 - 5
+* attack type
+  * 1  hit
+    * everything which is not a tip behind the block or an intentional rebound is a hit
+  * 2  tip
+    * skip zone after this one
+  * 3  rebound
+
+* attack zone 1 - 7
   * attackers:
     * 1  leftmost
     * 5  rightmost
   * setter dump:
     * 1  left half of court
     * 2  right half of court
+  * 6  for short tips
+  * 7  for not attributable
 
 * attack outcome 1 - 5
   * 1  point
-  * 2  defended (includes a defense which comes straight back over the net and a rebound off the block)
-  * 3  blocked
-  * 4  error
+  * 2  defended (any block touch is counted here as well)
+  * 3  block out point
+    * the preceeding zone is always the line zone if the otuside blocker is tooled, and the diagonal zone if the inside blocker is tooled,  later this will be counted as a different statistic
+  * 4  blocked
+    * the preceeding zone is always the line zone if the outside blocker blocked the attack, and the diagonal zone if the inside blocker got the block
+    * later this will be counted as a different statistic
+  * 5  error

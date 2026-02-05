@@ -5,7 +5,9 @@ class Hits():
     setter:  1 always
     
     zones:  1 - 5 from leftmost to rightmost,  just divide the court equally
-    outcomes:  1 point,  2 defended,  3 blocked,  4 error
+    zone:  6 - the zone for short tips
+    zone:  7 - not attributable
+    outcomes:  1 point,  2 defended,  3 block out,  4 blocked,  5 error
     """
 
     def __init__(self):
@@ -24,14 +26,13 @@ class Hits():
 
         self.hits[player][position] = {
             set_type: {hitting_zone: {hitting_outcome: 0 
-                for hitting_outcome in range(1, 5)} 
-                for hitting_zone in range(1, 6)} 
+                for hitting_outcome in range(1, 6)} 
+                for hitting_zone in range(1, 8)} 
                 for set_type in range(1, 5)
         }
 
 
-    def add_hit_to_player(self, player: int, hitting_position: int,set_type: int, hitting_zone: int,
-                            hitting_outcome: int):
+    def add_hit_to_player(self, player: int, hitting_position: int,set_type: int, hitting_zone: int, hitting_outcome: int):
 
         if not player in self.hits:
             self.add_player(player)

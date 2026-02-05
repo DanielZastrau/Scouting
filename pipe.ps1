@@ -1,4 +1,4 @@
-$filename = 'giessen2' 
+$filename = 'kiel' 
 
 mkdir .\analysis
 mkdir .\reports

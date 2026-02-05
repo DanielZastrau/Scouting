@@ -13,11 +13,17 @@ from reportlab.platypus import (
 from reportlab.graphics.shapes import Drawing, Rect, Line, String, Circle
 from reportlab.graphics import renderPDF
 
-translation = {
+serve_translation = {
     '1': 'Float',
     '2': 'Jumper',
     '3': 'Jumper after float toss',
     '4': 'Floater after jump toss',
+}
+outcome_translation = {
+    '1': 'Ace',
+    '2': 'Overpass',
+    '3': 'Received',
+    '4': 'Error',
 }
 
 
@@ -98,45 +104,54 @@ def draw_court_diagram(data: None | dict = None):
 
 def calculate_stats(data: dict) -> dict:
     """Calculates zone distribution and outcome distribution
-    
+
+    zone 10 is for not attributable errors (i.e. net errors)
+
     data = serves[player_num]
     """
     
     stats = {
         str(serve_type): {
+            'total_serves': 0,
+            'total_serves_for_zone_count': 0,
             'zone_dist': {str(i): 0 for i in range(1, 10)},
             'outcome_dist': {str(i): 0 for i in range(1, 5)},
-            'total_serves': 0,
-            'total_errs': 0,} for serve_type in range(1, 5)
+        } for serve_type in range(1, 5)
     }
+
 
     for serve_type, zones in data.items():
         for zone, outcomes in zones.items():
 
-            stats[serve_type]['zone_dist'][zone] = outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0)
+            if zone != '10':
+                stats[serve_type]['zone_dist'][zone] = sum(outcomes.values())
+                stats[serve_type]['total_serves_for_zone_count'] += sum(outcomes.values())
 
-            stats[serve_type]['total_serves'] += outcomes.get('1', 0) + outcomes.get('2', 0) + outcomes.get('3', 0) + outcomes.get('4', 0)
-            stats[serve_type]['total_errs'] += outcomes.get('4', 0)
+            stats[serve_type]['total_serves'] += sum(outcomes.values())
 
             stats[serve_type]['outcome_dist']['1'] += outcomes.get('1', 0)
             stats[serve_type]['outcome_dist']['2'] += outcomes.get('2', 0)
+            stats[serve_type]['outcome_dist']['3'] += outcomes.get('3', 0)
             stats[serve_type]['outcome_dist']['4'] += outcomes.get('4', 0)
+
 
     # convert to percentages
     for serve_type in stats:
-        for zone in stats[serve_type]['zone_dist']:
-            
-            if stats[serve_type]['total_serves'] == stats[serve_type]['total_errs']:
-                perc = 0
-            else:
-                perc = (stats[serve_type]['zone_dist'][zone]  / (stats[serve_type]['total_serves'] - stats[serve_type]['total_errs'])) * 100
-            
-            stats[serve_type]['zone_dist'][zone] = f'{perc:.0f}'
 
-    for serve_type in stats:
+        if stats[serve_type]['total_serves'] == 0:
+            continue
+
+        for zone in stats[serve_type]['zone_dist']:
+
+            if stats[serve_type]['total_serves_for_zone_count'] == 0:
+                continue
+
+            stats[serve_type]['zone_dist'][zone] = f'{stats[serve_type]['zone_dist'][zone]  / (stats[serve_type]['total_serves_for_zone_count']) * 100:.0f}'
+
         for outcome in stats[serve_type]['outcome_dist']:
             stats[serve_type]['outcome_dist'][outcome] = f'{stats[serve_type]['outcome_dist'][outcome] / stats[serve_type]['total_serves'] * 100:.0f}'
             
+
     return stats
 
 
@@ -198,6 +213,13 @@ def generate_pdf_report(serves: dict, output_filename: str):
         spaceAfter=10
     )
     
+    stat_style = ParagraphStyle(
+        'Stats', 
+        parent=styles['Normal'], 
+        fontSize=9, 
+        leading=10
+    )
+    
     
     # Append the Title to the elements
     elements.append(Paragraph("SERVES REPORT", title_style))
@@ -231,7 +253,7 @@ def generate_pdf_report(serves: dict, output_filename: str):
     
 
     # --- Main Data Table Setup ---
-    header_row = ['Plyr', 'Serve Type', 'Zone Distribution in %', 'Outcome Distribution']
+    header_row = ['Plyr', 'Serve', 'Zone Distribution in %', 'Outcome Distribution']
     
     col_widths = [1.5*cm, 1.5*cm, 8*cm, 6*cm]
     current_table_data = [header_row] 
@@ -265,13 +287,18 @@ def generate_pdf_report(serves: dict, output_filename: str):
 
             # Outcomes
             lines = []
+
+            lines.append(f'<b>Total Serves:</b> {player_stats[serve_type]['total_serves']}<br/>')
+
             lines.append('<b>By Outcome:</b>')
-            for outcome_key, outcome_name in translation.items():
+            for outcome_key, outcome_name in outcome_translation.items():
                 lines.append(f'- {outcome_name}: {player_stats[serve_type]['outcome_dist'][outcome_key]}%')
             outcome_dist = "<br/>".join(lines)
 
+            outcome_dist = Paragraph(outcome_dist, stat_style)
 
-            summary_row = [f"#{player_num}", f'{translation[serve_type]}', zone_dist, outcome_dist]
+
+            summary_row = [f"#{player_num}", f'{serve_translation[serve_type]}', zone_dist, outcome_dist]
 
 
             current_table_data.append(summary_row)

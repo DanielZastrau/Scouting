@@ -1,3 +1,14 @@
+"""I want to display the zone distribution. Therefore I need the total amount of hits and the total amount of hits per zone.
+I want to display the set distribution. Therefore I need the total amount of hits per set type.
+I want to display the outcome distribution. Therefore I need the total amount of hits per outcome.
+
+Block out attacks and blocked attacks are attributed to either zone 1 or 5 but are not counted towards the zone totals,
+    they are a different stat
+
+TODO: display block out statistics
+TODO: add tips zone
+"""
+
 import argparse
 import json
 import os
@@ -9,7 +20,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 )
-from reportlab.graphics.shapes import Drawing, Rect, Line, String
+from reportlab.graphics.shapes import Drawing, Rect, Line, String, Wedge
 from reportlab.graphics import renderPDF
 
 # Translation maps for Sets and Outcomes
@@ -25,25 +36,27 @@ translations = {
 OUTCOME_MAP = {
     '1': 'Point',
     '2': 'Defended',
-    '3': 'Blocked',
-    '4': 'Error'
+    '3': 'Block Out',
+    '4': 'Blocked',
+    '5': 'Error'
 }
 
 
 def aggregate_hitting_data(player_data: dict) -> dict:
     """player data is {hitting_position: set_type: hitting_zone: hitting_outcome: count}
     hitting_position 1 - 6
+    hitting_zones 1 - 6,  6 is for tips,  7 is not attributable
     set_type 1 - 4
-    hitting outcome 1 - 4
+    hitting outcomes:  1 - Point, 2 - Defended, 3 - Block out, 4 - Blocked, 5 - Error
     """
 
-    summary = {str(i): {
-        'total_hits': 0,
-        'total_blocks_and_errors': 0,
-        'zone_counts': {str(i): 0 for i in range(1, 6)},
-        'set_type_counts': {str(i): 0 for i in range(1, 5)},
-        'outcome_counts': {str(i): 0 for i in range(1, 5)},
-    } for i in range(1, 7)}
+    summary = {str(position): {
+        'total_attacks': 0,
+        'total_attacks_for_zone_count': 0,
+        'total_attacks_per_zone': {str(i): 0 for i in range(1, 7)},
+        'total_attacks_per_set_type': {str(i): 0 for i in range(1, 5)},
+        'total_attacks_per_outcome': {str(i): 0 for i in range(1, 6)},
+    } for position in range(1, 7)}
 
 
     # Aggregate data
@@ -55,35 +68,48 @@ def aggregate_hitting_data(player_data: dict) -> dict:
 
                 for outcome, outcome_count in zone_data.items():
 
-                    summary[position]['total_hits'] += outcome_count
+                    summary[position]['total_attacks'] += outcome_count
 
-                    if outcome in ['3', '4']:
-                        summary[position]['total_blocks_and_errors'] += outcome_count
+                    # block out and blocked are not counted towards the zone totals, they are a diff stat
+                    # balls which are not attributable to any zone are also not counted
+                    if not outcome in ['3', '4'] and not zone == '7':
+                        summary[position]['total_attacks_for_zone_count'] += outcome_count
 
-                    if not outcome in ['3', '4']:
-                        summary[position]['zone_counts'][zone] += outcome_count
+                        summary[position]['total_attacks_per_zone'][zone] += outcome_count
 
-                    summary[position]['set_type_counts'][set_type] += outcome_count
+                    summary[position]['total_attacks_per_set_type'][set_type] += outcome_count
 
-                    summary[position]['outcome_counts'][outcome] += outcome_count
+                    summary[position]['total_attacks_per_outcome'][outcome] += outcome_count
+
 
     # Convert to percentages
     for position in summary:
 
-        for zone, zone_count in summary[position]['zone_counts'].items():
+        for zone, zone_count in summary[position]['total_attacks_per_zone'].items():
 
-            if summary[position]['total_hits'] != 0 and summary[position]['total_hits'] != summary[position]['total_blocks_and_errors']:
-                summary[position]['zone_counts'][zone] = zone_count / (summary[position]['total_hits'] - summary[position]['total_blocks_and_errors']) * 100
+            if summary[position]['total_attacks_for_zone_count'] != 0:
+                summary[position]['total_attacks_per_zone'][zone] = zone_count / summary[position]['total_attacks_for_zone_count'] * 100
 
-        for set_type, set_type_count in summary[position]['set_type_counts'].items():
+        for set_type, set_type_count in summary[position]['total_attacks_per_set_type'].items():
 
-            if summary[position]['total_hits'] != 0:
-                summary[position]['set_type_counts'][set_type] = set_type_count / summary[position]['total_hits'] * 100
+            if summary[position]['total_attacks'] != 0:
+                summary[position]['total_attacks_per_set_type'][set_type] = set_type_count / summary[position]['total_attacks'] * 100
 
-        for outcome, outcome_count in summary[position]['outcome_counts'].items():
+        for outcome, outcome_count in summary[position]['total_attacks_per_outcome'].items():
     
-            if summary[position]['total_hits'] != 0:
-                summary[position]['outcome_counts'][outcome] = outcome_count / summary[position]['total_hits'] * 100
+            if summary[position]['total_attacks'] != 0:
+                summary[position]['total_attacks_per_outcome'][outcome] = outcome_count / summary[position]['total_attacks'] * 100
+
+
+    summary['total_outcome_dist'] = {str(outcome): 0 for outcome in range(1, 6)}
+    for position in summary:
+
+        if position == 'total_outcome_dist':
+            continue
+
+        for outcome, outcome_count in summary[position]['total_attacks_per_outcome'].items():
+            summary['total_outcome_dist'][outcome] += outcome_count
+
 
     return summary
 
@@ -102,6 +128,7 @@ def draw_hitting_cones(origin_type, data: None | dict = None):
 
     # Draw the Court (Opponent's side)
     d.add(Rect(0, 0, width, height, strokeColor=colors.black, fillColor=colors.whitesmoke, strokeWidth=2))
+
 
     # Define Origin X coordinate
     if origin_type == 'left':
@@ -151,16 +178,43 @@ def draw_hitting_cones(origin_type, data: None | dict = None):
 
         d.add(Line(origin_x, origin_y, target_x, target_y, strokeColor=colors.red, strokeWidth=1, strokeDashArray=[2, 2]))
 
+
+    # Draw zone 6 for short tips (Arc of a circle)
+    radius = 2 * width / 5
+
+    # Determine angles based on origin position relative to the court square
+    if origin_type == 'left':
+        # Bottom Left: Arc goes from Right (0) to Up (90)
+        start_angle = 0
+        end_angle = 90
+    elif origin_type == 'center':
+        # Bottom Center: Arc goes from Right (0) to Left (180)
+        start_angle = 0
+        end_angle = 180
+    else: # right
+        # Bottom Right: Arc goes from Up (90) to Left (180)
+        start_angle = 90
+        end_angle = 180
+
+    d.add(Wedge(origin_x, origin_y, radius, start_angle, end_angle,
+        strokeColor=colors.red, strokeWidth=1, strokeDashArray=[3, 3],
+        fillColor=colors.whitesmoke))
+
+
+    # Draw the 3m line
+    d.add(Line(0, height / 3, width, height/ 3, strokeColor=colors.black, strokeWidth=0.5))
+
+
     # Draw data
     if data is None:
-        data = {str(i): i for i in range(1, 6)}
+        data = {str(i): i for i in range(1, 7)}
 
     x_targets = [i * width / 10 for i in range(1, 10)]
     y_targets = [i * height / 10 for i in range(1, 10)]
 
-    outside_selectors = [(0, 8), (4, 8), (8, 8), (8, 4), (8, 1)]
-    middle_selectors = [(0, 1), (0, 5), (4, 8), (8, 5), (8, 1)]
-    opposite_selectors = [(0, 1), (0, 4), (0, 8), (5, 8), (8, 8)]
+    outside_selectors = [(0, 8), (4, 8), (8, 8), (8, 4), (8, 1), (0, 1)]
+    middle_selectors = [(0, 1), (0, 5), (4, 8), (8, 5), (8, 1), (4, 1)]
+    opposite_selectors = [(0, 1), (0, 4), (0, 8), (5, 8), (8, 8), (8, 1)]
 
     if origin_type == 'left':
         selectors = outside_selectors
@@ -202,38 +256,39 @@ def generate_hitting_report(data: dict, output_filename: str):
     # --- Section 1: Introduction & Diagrams ---
     elements.append(Paragraph("Attacking Report: Zones & Analysis", title_style))
     
-    intro_text = (
-        "<b>Zone Definition:</b> The opponent's court is divided into 5 equal pizza slices relative to the attacker. "
-        "<b>Zone 1</b> represents the leftmost zone, while <b>Zone 5</b> represents the rightmost zone. "
-        "The diagrams below visualize these lanes radiating from the attacker's perspective."
-    )
-    elements.append(Paragraph(intro_text, normal_style))
-    elements.append(Spacer(1, 1*cm))
+    # intro_text = (
+    #     "<b>Zone Definition:</b> The opponent's court is divided into 5 equal pizza slices relative to the attacker. "
+    #     "<b>Zone 1</b> represents the leftmost zone, while <b>Zone 5</b> represents the rightmost zone."
+    #     "<b>Zone 6</b> represents an extra zone for any short tips."
+    #     "The diagrams below visualize these lanes radiating from the attacker's perspective."
+    # )
+    # elements.append(Paragraph(intro_text, normal_style))
+    # elements.append(Spacer(1, 1*cm))
 
 
-    # Diagram Table (Initial Reference)
-    drawing_left = draw_hitting_cones('left')
-    drawing_center = draw_hitting_cones('center')
-    drawing_right = draw_hitting_cones('right')
+    # # Diagram Table (Initial Reference)
+    # drawing_left = draw_hitting_cones('left')
+    # drawing_center = draw_hitting_cones('center')
+    # drawing_right = draw_hitting_cones('right')
 
-    lbl_left = Paragraph("<b>From Pos 4</b><br/>(Left Front)", styles['Normal'])
-    lbl_center = Paragraph("<b>From Pos 3</b><br/>(Middle)", styles['Normal'])
-    lbl_right = Paragraph("<b>From Pos 2</b><br/>(Right Front)", styles['Normal'])
+    # lbl_left = Paragraph("<b>From Pos 4</b><br/>(Outside)", styles['Normal'])
+    # lbl_center = Paragraph("<b>From Pos 3</b><br/>(Middle)", styles['Normal'])
+    # lbl_right = Paragraph("<b>From Pos 2</b><br/>(Opposite)", styles['Normal'])
 
-    diag_data = [
-        [drawing_left, drawing_center, drawing_right],
-        [lbl_left, lbl_center, lbl_right]
-    ]
+    # diag_data = [
+    #     [drawing_left, drawing_center, drawing_right],
+    #     [lbl_left, lbl_center, lbl_right]
+    # ]
 
-    diag_table = Table(diag_data, colWidths=[5.5*cm, 5.5*cm, 5.5*cm])
-    diag_table.setStyle(TableStyle([
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-    ]))
+    # diag_table = Table(diag_data, colWidths=[5.5*cm, 5.5*cm, 5.5*cm])
+    # diag_table.setStyle(TableStyle([
+    #     ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+    #     ('VALIGN', (0,0), (-1,-1), 'TOP'),
+    #     ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+    # ]))
     
-    elements.append(diag_table)
-    elements.append(PageBreak())
+    # elements.append(diag_table)
+    # elements.append(PageBreak())
 
 
     # --- Section 2: Player Analysis Table ---
@@ -247,15 +302,21 @@ def generate_hitting_report(data: dict, output_filename: str):
     ]]
     col_widths = [2.5*cm, 2.5*cm, 7.0*cm, 5*cm]
 
+
     # Sort players numerically
     player_ids = sorted(data.keys(), key=lambda x: int(x))
 
+    row_with_diff_styling = []
+
+    row_id = 1
     for player_id in player_ids:
         player_data = data[player_id]
 
         summary = aggregate_hitting_data(player_data)
 
-        for position in [position for position in summary if summary[position]['total_hits'] != 0]:
+        already_added_player_id = False
+
+        for position in [position for position in summary if 'total_attacks' in summary[position] and summary[position]['total_attacks'] != 0]:
 
 
             # Column 1: Player ID
@@ -268,11 +329,11 @@ def generate_hitting_report(data: dict, output_filename: str):
 
             # Column 3: Distribution Diagram
             if position == '4':
-                zones_dist = draw_hitting_cones('left', summary[position]['zone_counts'])
+                zones_dist = draw_hitting_cones('left', summary[position]['total_attacks_per_zone'])
             elif position in ['3', '6']:
-                zones_dist = draw_hitting_cones('center', summary[position]['zone_counts'])
+                zones_dist = draw_hitting_cones('center', summary[position]['total_attacks_per_zone'])
             elif position in ['1', '2']:
-                zones_dist = draw_hitting_cones('right', summary[position]['zone_counts'])
+                zones_dist = draw_hitting_cones('right', summary[position]['total_attacks_per_zone'])
 
 
             # Column 4: Stats Text
@@ -281,18 +342,18 @@ def generate_hitting_report(data: dict, output_filename: str):
             else:
                 set_translations = translations['outsides']
 
-            if summary[position]['total_hits'] > 0:
-                lines = [f"<b>Total Hits: {summary[position]['total_hits']}</b><br/>"]
+            if summary[position]['total_attacks'] > 0:
+                lines = [f"<b>Total Hits: {summary[position]['total_attacks']}</b><br/>"]
                 
                 # outcomes
                 lines.append("<b>By Outcome:</b>")
                 for outcome_key, outcome_name in OUTCOME_MAP.items():
-                    percentage = summary[position]['outcome_counts'].get(outcome_key, 0)
+                    percentage = summary[position]['total_attacks_per_outcome'].get(outcome_key, 0)
                     lines.append(f"- {outcome_name}: {percentage:.0f}%")
                 
                 # set types
                 lines.append("<br/><b>By Set Type:</b>")
-                for set_key, set_percentage in summary[position]['set_type_counts'].items():
+                for set_key, set_percentage in summary[position]['total_attacks_per_set_type'].items():
 
                     if position != '3' and set_key == '4':
                         continue
@@ -305,13 +366,25 @@ def generate_hitting_report(data: dict, output_filename: str):
 
             stats_dist = Paragraph(stats_text, stat_style)
 
+
             # Append Row
-            table_rows.append([player_num, position_, zones_dist, stats_dist])
+            if already_added_player_id:
+                table_rows.append(['-', position_, zones_dist, stats_dist])
+            else:
+                table_rows.append([player_num, position_, zones_dist, stats_dist])
+                already_added_player_id = True
+            row_id += 1
+
+        table_rows.append(['', '', '', ''])
+        row_with_diff_styling.append(row_id)
+        row_id += 1
+
 
     # --- Build Main Table ---
     main_table = Table(table_rows, colWidths = col_widths)
     
-    main_table.setStyle(TableStyle([
+
+    table_style = TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -330,7 +403,16 @@ def generate_hitting_report(data: dict, output_filename: str):
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('TOPPADDING', (0, 1), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-    ]))
+    ])
+
+    # rows with different styling
+    for row in row_with_diff_styling:
+        table_style.add(
+            'BACKGROUND', (0, row), (-1, row), colors.lightgrey
+        )
+
+
+    main_table.setStyle(table_style)
 
     elements.append(main_table)
 
