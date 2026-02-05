@@ -227,6 +227,15 @@ def main(filename: str):
                 mode = 'looking for type of set next'
 
                 sets_destination = len(action)
+                
+                # check if set destination is possible
+                if lineup.is_in_frontcourt(lineup.setter) and sets_destination == 2:
+                    sets_destination = 1
+                    print(f'\\033[31m Faulty scouting there is no opposite in the frontcourt, current lineup: {lineup.lineup}. Will assume opposite in the backcourt')
+
+                if lineup.is_in_backcourt(lineup.setter) and sets_destination == 1:
+                    sets_destination = 2
+                    print(f'\\033[31m Faulty scouting there is no opposite in the backcourt, current lineup: {lineup.lineup}. Will assume opposite in the frontcourt')
 
                 # careful the set destination is given as 1 - 6,  the lineup positions are stored as 0 - 5
                 hits_player = lineup.get_hitting_player_on_position(sets_destination)

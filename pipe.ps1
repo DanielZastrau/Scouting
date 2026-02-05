@@ -3,6 +3,8 @@ $filename = 'kiel'
 mkdir .\analysis
 mkdir .\reports
 
+py .\preprocessing\preprocessor.py --filename "${filename}.txt"
+
 py .\analysis.py --filename "${filename}.txt"
 
 py .\generators\serves.py

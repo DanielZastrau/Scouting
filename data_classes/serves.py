@@ -26,9 +26,6 @@ class Serves():
         if not player in self.serves:
             self.add_player(player)
 
-        if zone != 10 and outcome == 4:
-            raise Exception('Serve errors are never attributable to a specific zone.')
-
         self.serves[player][type_][zone][outcome] += 1
 
 

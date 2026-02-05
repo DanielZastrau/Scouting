@@ -16,8 +16,8 @@ from reportlab.graphics import renderPDF
 serve_translation = {
     '1': 'Float',
     '2': 'Jumper',
-    '3': 'Jumper after float toss',
-    '4': 'Floater after jump toss',
+    '3': 'Jumper after<br/>float toss',
+    '4': 'Floater after<br/>jump toss',
 }
 outcome_translation = {
     '1': 'Ace',
@@ -255,35 +255,42 @@ def generate_pdf_report(serves: dict, output_filename: str):
     # --- Main Data Table Setup ---
     header_row = ['Plyr', 'Serve', 'Zone Distribution in %', 'Outcome Distribution']
     
-    col_widths = [1.5*cm, 1.5*cm, 8*cm, 6*cm]
-    current_table_data = [header_row] 
-    
-    current_table_style = [
-        ('FONTNAME', (0, 0), (-1, -1), 'Courier'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('FONTBOLD', (0, 0), (-1, 0), True),
-        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]
+    col_widths = [1*cm, 3.5*cm, 8*cm, 4*cm]
+
+
+    table_rows = [header_row] 
+
+
+    row_with_diff_styling = []
+    row_id = 1
 
 
     sorted_players = sorted(serves.keys(), key = lambda x: int(x))
-    row_idx = 1
-
     for player_num in sorted_players:
 
         player_stats = calculate_stats(serves[player_num])
 
+        already_added_player_id = False
 
         for serve_type in player_stats:
                 
             if player_stats[serve_type]['total_serves'] == 0:
                 continue
 
+            # col 1  --  player num
+            if already_added_player_id:
+                col_1 = '-'
+            else:
+                col_1 = f'#{player_num}'
+                already_added_player_id = True
+
+
+            # col 2  -- serve type
+            col_2 = Paragraph(f'{serve_translation[serve_type]}', stat_style)
+
 
             # Zone Distribution, i.e. court diagram
             zone_dist = draw_court_diagram(data=player_stats[serve_type]['zone_dist'])
-
 
             # Outcomes
             lines = []
@@ -298,20 +305,51 @@ def generate_pdf_report(serves: dict, output_filename: str):
             outcome_dist = Paragraph(outcome_dist, stat_style)
 
 
-            summary_row = [f"#{player_num}", f'{serve_translation[serve_type]}', zone_dist, outcome_dist]
+            table_rows.append([col_1, col_2, zone_dist, outcome_dist])
+
+            row_id += 1
 
 
-            current_table_data.append(summary_row)
-            current_table_style.append(('FONTBOLD', (0, row_idx), (0, row_idx), True))
-            row_idx += 1
-
-            current_table_style.append(('LINEBELOW', (0, row_idx-1), (-1, row_idx-1), 0.5, colors.lightgrey))
+        table_rows.append(['', '', '', ''])
+        row_with_diff_styling.append(row_id)
+        row_id += 1
 
 
-    if len(current_table_data) > 1:
-        t = Table(current_table_data, colWidths=col_widths, repeatRows=1)
-        t.setStyle(TableStyle(current_table_style))
-        elements.append(t)
+    # --- Build Main Table ---
+    main_table = Table(table_rows, colWidths = col_widths)
+    
+
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        
+        # Data Rows
+        ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'), # Center ID
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        
+        # Padding
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ])
+
+    # rows with different styling
+    for row in row_with_diff_styling:
+        table_style.add(
+            'BACKGROUND', (0, row), (-1, row), colors.lightgrey
+        )
+
+
+    main_table.setStyle(table_style)
+
+    elements.append(main_table)
 
 
     doc.build(elements)

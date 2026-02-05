@@ -106,21 +106,13 @@ class Lineup():
         backcourt_players, backcourt_meta = self.get_backcourt()
 
         if position == 1:
-            try:
-                return backcourt_players[backcourt_meta.index('OP')]
-            except ValueError:
-                print(f'\\033[31m Faulty scouting there is no opposite in the back row, current lineup: {self.lineup}. Will assume opposite in the front row')
-                return frontcourt_players[frontcourt_meta.index('OP')]
+            return backcourt_players[backcourt_meta.index('OP')]
 
         if position == 2:
             if rotation == 0:
                 return frontcourt_players[frontcourt_meta.index('OH')]
             else:
-                try:
-                    return frontcourt_players[frontcourt_meta.index('OP')]
-                except ValueError:
-                    print(f'\\033[31m Faulty scouting there is no opposite in the front row, current lineup: {self.lineup}. Will assume opposite in the back row')
-                    return backcourt_players[backcourt_meta.index('OP')]
+                return frontcourt_players[frontcourt_meta.index('OP')]
 
         # middle was set
         if position == 3:
@@ -143,6 +135,26 @@ class Lineup():
     def get_server(self) -> int:
 
         return self.lineup[0]
+
+
+    # questions
+
+    def is_in_frontcourt(self, player) -> bool:
+
+        frontcout_players, frontcourt_meta = self.get_frontcourt()
+
+        if player in frontcout_players:
+            return True
+        return False
+
+
+    def is_in_backcourt(self, player) -> bool:
+
+        backcourt_players, backcourt_meta = self.get_backcourt()
+
+        if player in backcourt_players:
+            return True
+        return False
 
 
     # modifiers
