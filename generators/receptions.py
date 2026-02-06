@@ -128,10 +128,10 @@ def generate_reception_pdf(receptions: dict, output_filename: str):
             datarow = [
                 f"#{player_num}",
                 str(stats['total']),
-                f"{stats['perfect']}-({stats['perfect'] / stats['total'] * 100:.0f}%)",
-                f"{stats['okay']}-({stats['okay'] / stats['total'] * 100:.0f}%)",
-                f"{stats['bad']}-({stats['bad'] / stats['total'] * 100:.0f}%)",
-                f"{stats['error']}-({stats['error'] / stats['total'] * 100:.0f}%)",
+                f"{stats['perfect'] / stats['total'] * 100:.0f}%  ({stats['perfect']})",
+                f"{stats['okay'] / stats['total'] * 100:.0f}%  ({stats['okay']})",
+                f"{stats['bad'] / stats['total'] * 100:.0f}%  ({stats['bad']})",
+                f"{stats['error'] / stats['total'] * 100:.0f}%  ({stats['error']})",
             ]
 
             table_data.append(datarow)
