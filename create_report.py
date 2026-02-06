@@ -20,6 +20,10 @@ PRIORITY_ORDER = [
     'hits_report',
 ]
 
+translations = {
+    'Setter Afterreception1 Report': 'Setter after Reception on Pos 1 Report'
+}
+
 def get_sort_key(filename):
     """
     Returns a tuple (priority_index, filename) for sorting.
@@ -62,6 +66,10 @@ def create_toc_pdf(toc_entries, output_path):
     for name, page in toc_entries:
         # Clean up filename for display (e.g., "serves_report.pdf" -> "Serves Report")
         display_name = os.path.splitext(name)[0].replace('_', ' ').replace('-', ' ').title()
+
+        if display_name in translations:
+            display_name = translations[display_name]
+
         table_data.append([display_name, str(page)])
 
     # Styling the table

@@ -253,9 +253,9 @@ def generate_pdf_report(serves: dict, output_filename: str):
     
 
     # --- Main Data Table Setup ---
-    header_row = ['Plyr', 'Serve', 'Zone Distribution in %', 'Outcome Distribution']
+    header_row = ['Plyr', 'Serve', 'Zone Dist in %', 'Outcome Dist in %']
     
-    col_widths = [1*cm, 3.5*cm, 8*cm, 4*cm]
+    col_widths = [1*cm, 2.5*cm, 8*cm, 5*cm]
 
 
     table_rows = [header_row] 
