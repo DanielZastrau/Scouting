@@ -18,6 +18,7 @@ PRIORITY_ORDER = [
     'setter_report',
     'setter_afterReception1_report',
     'hits_report',
+    'breaks_report'
 ]
 
 translations = {

@@ -13,6 +13,7 @@ from data_classes.sets import Sets
 
 from data_classes.hits import Hits
 
+from data_classes.breaks import Breaks
 
 ##############################    Main    ##############################
 
@@ -46,6 +47,8 @@ def main(filename: str):
 
     hits = Hits()
 
+    breaks = Breaks()
+
     c = 1
     amount_of_serves = 0
     for i, line in enumerate(data):
@@ -62,8 +65,13 @@ def main(filename: str):
         lineup.determine_lineup(lineup_)
 
 
-        # currently want to fill serving dicts
+        # pre set relevant variables
         mode = 'looking for action'
+
+        # stores the last beginning of a play
+        # serve -> serve indicates a won breakpoint
+        # reception -> reception indicates a lost sideout
+        # is used for the breakpoints and to determine when to rotate the lineup
         team_mode = 'none'
         
 
@@ -102,6 +110,12 @@ def main(filename: str):
                     if team_mode == 'receiving':
                         lineup.rotate_lineup()
 
+                    # serving -> serving
+                    elif team_mode == 'serving':
+                        breaks.won_breakpoint(rotation = lineup.get_rotation())
+
+                        breaks.won_breakpoint(player = lineup.get_server())
+
                     team_mode = 'serving'
 
                     serves_player = lineup.get_server()
@@ -117,6 +131,10 @@ def main(filename: str):
 
                     mode = 'looking for reception type next'
                     
+                    # receiving -> receiving
+                    if team_mode == 'receiving':
+                        breaks.lost_sideout(lineup.get_rotation())
+
                     team_mode = 'receiving'
 
                     receptions_player = 0
@@ -311,6 +329,8 @@ def main(filename: str):
     sets_special_case1.save(analysis_dir_path)
     
     hits.save(analysis_dir_path)
+
+    breaks.save(analysis_dir_path)
     
 
 if __name__ == '__main__': 

@@ -12,6 +12,7 @@ py .\generators\receptions.py
 py .\generators\sets.py
 py .\generators\hitting.py
 py .\generators\sets_reception1.py
+py .\generators\breaks.py
 
 py .\create_report.py --output "${filename}.pdf"
 
