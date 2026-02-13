@@ -3,10 +3,10 @@
 *.log
 *.txt
 *.json
+*.pdf
 venv/
 __pycache__/
 
 ToDo.md
 
-!scouting/*
 !requirements.txt

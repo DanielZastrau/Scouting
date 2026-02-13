@@ -34,6 +34,7 @@
   * is followed by a set type
   * is followed by an attack type
   * is followed by an attack zone
+    * special case:  blocked by inside blocker is diagonal zone, outside blocker is line zone
     * special case:  if the hit is an error or it is blocked, and can also not be attributed to a specific zone, then they are noted as extra zones
   * is followed by an attack outcome
   * is followed by either a break (point or error) or a set destination (ball was returned (either by rebounding it off the block or by attack))
@@ -85,13 +86,12 @@
     * 2  normal
     * 3  high
   * setter dump:
-    * 1  -
+    * 1  is always followed by 1 1 
 
 * attack type
   * 1  hit
     * everything which is not a tip behind the block or an intentional rebound is a hit
   * 2  tip
-    * skip zone after this one
   * 3  rebound
 
 * attack zone 1 - 7

@@ -19,10 +19,12 @@ PRIORITY_ORDER = [
     'setter_afterReception1_report',
     'hits_report',
     'breaks_report'
+    'for_oli_report'
 ]
 
 translations = {
-    'Setter Afterreception1 Report': 'Setter after Reception on Pos 1 Report'
+    'Setter Afterreception1 Report': 'Setter after Reception on Pos 1 Report',
+    'Foroli Report': 'For Oli'
 }
 
 def get_sort_key(filename):

@@ -8,6 +8,9 @@ class Hits():
     zone:  6 - the zone for short tips
     zone:  7 - not attributable
     outcomes:  1 point,  2 defended,  3 block out,  4 blocked,  5 error
+
+    outcomes block out and blocked cannot occur in zones 2, 3, 4, if it is not a middle blocker or a pipe attack
+    outcomes block out and blocked are counted towards the line zone if the outside blocker had the touch and otherwise towards the diagonal zone
     """
 
     def __init__(self):
@@ -32,13 +35,16 @@ class Hits():
         }
 
 
-    def add_hit_to_player(self, player: int, hitting_position: int,set_type: int, hitting_zone: int, hitting_outcome: int):
+    def add_hit_to_player(self, player: int, hitting_position: int, set_type: int, hitting_zone: int, hitting_outcome: int):
 
         if not player in self.hits:
             self.add_player(player)
 
         if not hitting_position in self.hits[player]:
             self.add_position_to_player(player, hitting_position)
+
+        if hitting_position not in [3, 6] and hitting_outcome in [3, 4] and hitting_zone in [2, 3, 4]:
+            raise Exception('Outcomes "block out" and "blocked" cannot be attributed to zones 2, 3, 4 for non middle or pipe attacks')
 
         self.hits[player][hitting_position][set_type][hitting_zone][hitting_outcome] += 1
 
